@@ -1,3 +1,5 @@
+from pydrake.forwarddiff import jacobian
+from pydrake.all import LinearQuadraticRegulator
 import numpy as np
 from numpy import linalg as LA
 from numpy import sin, cos
@@ -7,32 +9,34 @@ import matplotlib.pyplot as plt
 
 #%% dynamics and derivatives
 # dynamics
-def CalcF(x, u=np.zeros(1)):
-    assert(x.size == 4)
-    assert(u.size == 1)
+def CalcF(x_u):
+    assert(x_u.size == 5)
+    x = x_u[0:4]
+    u = x_u[4:5]
 
     theta = x[1]
     xc_dot = x[2]
     theta_dot = x[3]
     
-    x_dot = np.zeros(4)
-    x_dot[0] = xc_dot
-    x_dot[1] = theta_dot
     
-    x_dot[2] = u[0] * theta_dot**2*sin(theta) + sin(theta)*cos(theta)
-    x_dot[2] /= 1+sin(theta)**2
+    xc_dotdot = u[0] + theta_dot**2*sin(theta) + sin(theta)*cos(theta)
+    xc_dotdot /= 1+sin(theta)**2
     
-    x_dot[3] = -cos(theta)*u[0] - -theta_dot**2*sin(2*theta)/2 - 2*sin(theta)
-    x_dot[3] /= 1+sin(theta)**2
+    theta_dotdot = -cos(theta)*u[0] - -theta_dot**2*sin(2*theta)/2 - 2*sin(theta)
+    theta_dotdot /= 1+sin(theta)**2
     
     # damping
     # x_dot[2] += -0.1*xc_dot
     # x_dot[3] += -0.1*theta_dot
     
-    return x_dot
+    return np.array([xc_dot, theta_dot, xc_dotdot, theta_dotdot])
 
 # x derivatives
-def CalcFx(x, u=np.zeros(1)):
+def CalcFx(x_u):
+    assert(x_u.size == 5)
+    x = x_u[0:4]
+    u = x_u[4:5]
+    
     fx = np.zeros((4,4))
     fx[0:2][:,2:4] = np.eye(2)
  
@@ -64,38 +68,52 @@ def CalcFx(x, u=np.zeros(1)):
 
 
 # u derivatives
-def CalcFu(x, u=np.zeros(1)):
+def CalcFu(x_u):
+    assert(x_u.size == 5)
+    x = x_u[0:4]
+    u = x_u[4:5]
+    
     theta = x[1]   
     fu = np.array([0,0,1,-cos(theta)]) / (1+sin(theta)**2)
+    fu.resize((4,1))
     
     return fu
-    
+
+#%% compare autodiff and analytic derivatives
+#    
+#x_u = np.array([0,0,0,0,0])
+#
+#print CalcFx(x_u)
+#print CalcFu(x_u)
+#print jacobian(CalcF, x_u)
 
 #%% simulate and plot
-#dt = 0.001
-#T = 20000
-#t = dt*np.arange(T+1)
-#x = np.zeros((T+1, 4))
-#x[0] = [0, np.pi/2, 0, 0]
-#
-#for i in range(T):
-#    x[i+1] = x[i] + dt*CalcF(x[i])
-#    
-#fig = plt.figure(figsize=(6,12), dpi = 100)
-#
-#ax_x = fig.add_subplot(311)
-#ax_x.set_ylabel("x")
-#ax_x.plot(t, x[:,0])
-#ax_x.axhline(color='r', ls='--')
-#
-#ax_y = fig.add_subplot(312)
-#ax_y.set_ylabel("theta")
-#ax_y.plot(t, x[:,1])
-#ax_y.axhline(color='r', ls='--')
+dt = 0.001
+T = 20000
+t = dt*np.arange(T+1)
+x = np.zeros((T+1, 4))
+x[0] = [0, np.pi-0.05, 0, 0]
+
+K0, S0 = LinearQuadraticRegulator(A0, B0, 100*np.diag([0.1,1,1,1]), 1*np.eye(1))
+for i in range(T):
+    x_u = np.hstack((x[i], K0.dot(x[i]-xd)))
+    x[i+1] = x[i] + dt*CalcF(x_u)
+    
+fig = plt.figure(figsize=(6,12), dpi = 100)
+
+ax_x = fig.add_subplot(311)
+ax_x.set_ylabel("x")
+ax_x.plot(t, x[:,0])
+ax_x.axhline(color='r', ls='--')
+
+ax_y = fig.add_subplot(312)
+ax_y.set_ylabel("theta")
+ax_y.plot(t, x[:,1])
+ax_y.axhline(color='r', ls='--')
 
 #%% initilization
 h = 0.01 # time step.
-N = 500 # horizon
+N = 400 # horizon
 
 n = 4 # number of states
 m = 1 # number of inputs
@@ -111,9 +129,9 @@ Qux = np.zeros((N, m, n))
 xd = [0,np.pi,0,0]
 
 # terminal cost = 1/2*(x-xd)'*QN*(x-xd)
-QN = np.diag([1, 10, 1, 10])
+QN = 100*np.diag([1, 1, 1, 1])
 # l(x,u) = 1/2*((x-xd)'*Q*(x-xd) + u'*R*u)
-Q = np.diag([1, 10, 1, 10]) # lqr cost
+Q = 100*np.diag([1, 1, 1, 1]) # lqr cost
 R = np.eye(1) # lqr cost
 
 delta_V = np.zeros(N+1)
@@ -128,9 +146,17 @@ K = np.zeros((N, n))
 x0 = np.array([0.,0,0,0])
 x = np.zeros((N+1, n))
 x[0] = x0
-u = np.full((N, m), 0.1)
+# get LQR controller about the upright fixed point.
+f_x_u = jacobian(CalcF, np.hstack((xd, [0])))
+A0 = f_x_u[:, 0:4]
+B0 = f_x_u[:, 4:5]
+K0, S0 = LinearQuadraticRegulator(A0, B0, Q, R)
+
+# simulate forward
 for t in range(N):
-    x[t+1] = x[t] + h*CalcF(x[t],u[t])
+    x_u = np.hstack((x[t], K0.dot(x[t])))
+    x[t+1] = x[t] + h*CalcF(x_u)
+    
 x_new = np.zeros((N+1, n))
 u_new = np.zeros((N, m))
 
@@ -139,7 +165,7 @@ Vxx[N] = QN
 Vx[N] = QN.dot(x[N]-xd)
 
 # logging
-Ni = 6 # number of iterations
+Ni = 5 # number of iterations
 Quu_inv_log = np.zeros((Ni, N, m, m))
 # It really should be a while loop, but for linear systems one iteration seems 
 # to be sufficient. And I am sure this can be proven. 
@@ -149,14 +175,19 @@ for j in range(Ni):
         u = u_new
         Vx[N] = QN.dot(x[N]-xd)
         
+    del t   
     # backward pass
     for i in range(N-1, -1, -1): # i = N-1, ...., 0
         lx = Q.dot(x[i]-xd)
         lu = R.dot(u[i])
         lxx = Q
         luu = R
-        fx = CalcFx(x[t], u[t])
-        fu = CalcFu(x[t], u[t])
+        x_u = np.hstack((x[i], u[i]))
+        f_x_u = jacobian(CalcF, x_u)
+        fx = f_x_u[:, 0:4]
+        fu = f_x_u[:, 4:5]
+#        fx = CalcFx(x_u)
+#        fu = CalcFu(x_u)
         
         Qx[i] = lx + fx.T.dot(Vx[i+1])
         Qu[i] = lu + fu.T.dot(Vx[i+1])
@@ -176,10 +207,12 @@ for j in range(Ni):
         K[i] = -Quu_inv.dot(Qux[i])
         
     # forward pass
+    del i
     x_new[0] = x[0]
     for t in range(N):
         u_new[t] = u[t] + k[t] + K[t].dot(x_new[t] - x[t])
-        x_new[t+1] = x_new[t] + h*CalcF(x_new[t],u_new[t])
+        x_u_new = np.hstack((x_new[t], u_new[t]))
+        x_new[t+1] = x_new[t] + h*CalcF(x_u_new)
     
     
 #%% plot
@@ -194,7 +227,7 @@ ax_x.axhline(color='r', ls='--')
 ax_y = fig.add_subplot(312)
 ax_y.set_ylabel("theta")
 ax_y.plot(t, x_new[:,1])
-ax_y.axhline(color='r', ls='--')
+ax_y.axhline(np.pi, color='r', ls='--')
 
 ax_u = fig.add_subplot(313)
 ax_u.set_ylabel("u")
