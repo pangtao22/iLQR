@@ -1,6 +1,9 @@
 import numpy as np
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
+# Notations in this code follow "Synthesis and stabilization of complex 
+# behaviors through online trajectory optimization" by Y. Tassa and E. Todorov.
+
 #%% initilization
 h = 0.01 # time step.
 N = 200 # horizon
@@ -46,6 +49,8 @@ u_new = np.zeros((N, m))
 Vxx[N] = QN 
 Vx[N] = QN.dot(x[N])
 
+# It really should be a while loop, but for linear systems one iteration seems 
+# to be sufficient. And I am sure this can be proven. 
 for j in range(1):
     if j > 0:
         x = x_new
