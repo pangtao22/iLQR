@@ -1,12 +1,13 @@
 import numpy as np
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
+from pydrake.all import LinearQuadraticRegulator
 # Notations in this code follow "Synthesis and stabilization of complex 
 # behaviors through online trajectory optimization" by Y. Tassa and E. Todorov.
 
 #%% initilization
 h = 0.01 # time step.
-N = 200 # horizon
+N = 100 # horizon
 
 # discrete double integrator dynamics
 A = np.array([[1, h], [0, 1]]) 
@@ -21,11 +22,11 @@ Qu = np.zeros((N, m))
 Quu = np.zeros((N, m, m))
 Qux = np.zeros((N, m, n))
 
-# terminal cost = 1/2*x'*QN*x
-QN = np.diag([1e3, 1e2])
 # l(x,u) = 1/2*(x'*Q*x + u'*R*u)
-Q = np.diag([1e3, 1e2]) # lqr cost
+Q = np.diag([1, 1]) # lqr cost
 R = np.eye(1) # lqr cost
+# terminal cost = 1/2*x'*QN*x
+K0, QN = LinearQuadraticRegulator(A,B,Q,R)
 
 delta_V = np.zeros(N+1)
 Vx = np.zeros((N+1, n))

@@ -88,15 +88,20 @@ def CalcFu(x_u):
 #print jacobian(CalcF, x_u)
 
 #%% simulate and plot
-dt = 0.001
-T = 20000
+dt = 0.01
+T = 4000
 t = dt*np.arange(T+1)
 x = np.zeros((T+1, 4))
-x[0] = [0, np.pi-0.05, 0, 0]
+x[0] = [0, 3.19, 0, 0]
 
-K0, S0 = LinearQuadraticRegulator(A0, B0, 100*np.diag([0.1,1,1,1]), 1*np.eye(1))
+xd = np.array([0, np.pi, 0, 0])
+f_x_u = jacobian(CalcF, np.hstack((xd, [0])))
+A0 = f_x_u[:, 0:4]
+B0 = f_x_u[:, 4:5]
+
+K0, S0 = LinearQuadraticRegulator(A0, B0, 100*np.diag([1,1,1,1]), 1*np.eye(1))
 for i in range(T):
-    x_u = np.hstack((x[i], K0.dot(x[i]-xd)))
+    x_u = np.hstack((x[i], -K0.dot(x[i]-xd)))
     x[i+1] = x[i] + dt*CalcF(x_u)
     
 fig = plt.figure(figsize=(6,12), dpi = 100)
@@ -110,6 +115,10 @@ ax_y = fig.add_subplot(312)
 ax_y.set_ylabel("theta")
 ax_y.plot(t, x[:,1])
 ax_y.axhline(color='r', ls='--')
+
+print A0
+print B0
+print K0
 
 #%% initilization
 h = 0.01 # time step.
@@ -126,7 +135,7 @@ Quu = np.zeros((N, m, m))
 Qux = np.zeros((N, m, n))
 
 # desired fixed point
-xd = [0,np.pi,0,0]
+xd = np.array([0,np.pi,0,0])
 
 # terminal cost = 1/2*(x-xd)'*QN*(x-xd)
 QN = 100*np.diag([1, 1, 1, 1])
@@ -145,16 +154,12 @@ K = np.zeros((N, n))
 # initial trajectory 
 x0 = np.array([0.,0,0,0])
 x = np.zeros((N+1, n))
+u = np.zeros((N, m))
 x[0] = x0
-# get LQR controller about the upright fixed point.
-f_x_u = jacobian(CalcF, np.hstack((xd, [0])))
-A0 = f_x_u[:, 0:4]
-B0 = f_x_u[:, 4:5]
-K0, S0 = LinearQuadraticRegulator(A0, B0, Q, R)
 
 # simulate forward
 for t in range(N):
-    x_u = np.hstack((x[t], K0.dot(x[t])))
+    x_u = np.hstack((x[t], u[t]))
     x[t+1] = x[t] + h*CalcF(x_u)
     
 x_new = np.zeros((N+1, n))
@@ -165,7 +170,7 @@ Vxx[N] = QN
 Vx[N] = QN.dot(x[N]-xd)
 
 # logging
-Ni = 5 # number of iterations
+Ni = 20 # number of iterations
 Quu_inv_log = np.zeros((Ni, N, m, m))
 # It really should be a while loop, but for linear systems one iteration seems 
 # to be sufficient. And I am sure this can be proven. 
@@ -222,17 +227,20 @@ fig = plt.figure(figsize=(6,12), dpi = 100)
 ax_x = fig.add_subplot(311)
 ax_x.set_ylabel("x")
 ax_x.plot(t, x_new[:,0])
+ax_x.plot(t, x[:,0])
 ax_x.axhline(color='r', ls='--')
 
 ax_y = fig.add_subplot(312)
 ax_y.set_ylabel("theta")
 ax_y.plot(t, x_new[:,1])
+ax_y.plot(t, x[:,1])
 ax_y.axhline(np.pi, color='r', ls='--')
 
 ax_u = fig.add_subplot(313)
 ax_u.set_ylabel("u")
 ax_u.set_xlabel("t")
 ax_u.plot(t[0:-1], u_new)
+ax_u.plot(t[0:-1], u)
 ax_u.axhline(color='r', ls='--')
 
 
