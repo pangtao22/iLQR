@@ -56,7 +56,6 @@ Qu = np.zeros((N, m))
 Quu = np.zeros((N, m, m))
 Qux = np.zeros((N, m, n))
 
-
 delta_V = np.zeros(N+1)
 Vx = np.zeros((N+1, n))
 Vxx = np.zeros((N+1, n, n))
