@@ -74,7 +74,9 @@ class DiscreteTimeIterativeLQR:
         J[0] = CalcJ(x[0], u[0])
         
         # It really should be a while loop, but for linear systems one 
-        # iteration seems sufficient. And I am sure this can be proven. 
+        # iteration seems sufficient. And I am sure this can be proven.
+        # And for quadrotors it usually takes less than 5 iterations 
+        # to converge.
         for j in range(Ni):
             # initialize boundary conditions
             Vxx[N] = QN 
