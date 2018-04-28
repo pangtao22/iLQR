@@ -1,8 +1,6 @@
 import numpy as np
-from numpy import linalg as LA
 import matplotlib.pyplot as plt
-from iLQR import IterativeLQR
-
+from iLQR import DiscreteTimeIterativeLQR
 
 #%% initilization
 # discrete double integrator dynamics
@@ -18,16 +16,15 @@ def CalcF(x_u):
     assert(x_u.size == m+n)
     x = x_u[0:n]
     u = x_u[n:n+m]    
-    x_dotdot = A.dot(x) + B.dot(u)
+    x_dot = A.dot(x) + B.dot(u)
+    return x_dot
 
-    return x_dotdot
-
-planner= IterativeLQR(CalcF, n, m)
+planner= DiscreteTimeIterativeLQR(CalcF, n, m)
 #%% iLQR
 h = 0.01 # time step.
 N = 500 # horizon
 x0 = np.array([1,0])
-Q = 1000*np.diag([1, 1]) # lqr cost
+Q = 10*np.diag([1, 1]) # lqr cost
 R = np.eye(1) # lqr cost
 xd = np.zeros(n)
 ud = np.zeros(m)

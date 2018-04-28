@@ -32,7 +32,7 @@ def CalcF(x_u):
 
 #%% initilization
 h = 0.01 # time step.
-N = 1000 # horizon
+N = 500 # horizon
 
 # desired fixed point
 xd = np.array([0,1,0,0,0,0])
@@ -47,7 +47,7 @@ B0 = f_x_u[:, n:n+m]
 Q = 100*np.eye(n) # lqr cost
 R = np.eye(m) # lqr cost
 K0, S0 = LinearQuadraticRegulator(A0, B0, Q, R)
-QN = S0 # terminal cost = 1/2*(x-xd)'*QN*(x-xd)
+QN = 100*S0 # terminal cost = 1/2*(x-xd)'*QN*(x-xd)
 
 # derivatives
 Qx = np.zeros((N, n))
@@ -66,7 +66,7 @@ K = np.zeros((N, m, n))
 
 #%% iLQR
 # initial trajectory 
-x0 = np.array([0, 0.2, 0.1, 0, 0, -0.2])
+x0 = np.array([0, 0., 0.1, 0, 0, -0.2])
 x = np.zeros((N+1, n))
 u = np.zeros((N, m))
 x[0] = x0
@@ -118,8 +118,8 @@ for j in range(Ni):
         luu = R
         x_u = np.hstack((x[i], u[i]))
         f_x_u = jacobian(CalcF, x_u)
-        fx = f_x_u[:, 0:n]
-        fu = f_x_u[:, n:n+m]
+        fx = h*f_x_u[:, 0:n] + np.eye(n)
+        fu = h*f_x_u[:, n:n+m]
         
         Qx[i] = lx + fx.T.dot(Vx[i+1])
         Qu[i] = lu + fu.T.dot(Vx[i+1])

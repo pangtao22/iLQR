@@ -1,11 +1,12 @@
 from pydrake.forwarddiff import jacobian
 from pydrake.all import LinearQuadraticRegulator
+from pydrake.all import DiscreteTimeLinearQuadraticRegulator
 import numpy as np
 from numpy import linalg as LA
 # Notations in this code follow "Synthesis and stabilization of complex 
 # behaviors through online trajectory optimization" by Y. Tassa and E. Todorov.
 
-class IterativeLQR:
+class DiscreteTimeIterativeLQR:
     def __init__(self, CalcF, n, m):
         self.CalcF = CalcF # dynamics
         self.n = n # number of states
@@ -25,11 +26,10 @@ class IterativeLQR:
         
         # linearize about desired fixed point
         f_x_u = jacobian(self.CalcF, np.hstack((xd, ud)))
-        A0 = f_x_u[:, 0:n]
-        B0 = f_x_u[:, n:n+m]
+        A0 = h*f_x_u[:, 0:n] + np.eye(n)
+        B0 = h*f_x_u[:, n:n+m]
         # terminal cost = 1/2*(x-xd)'*QN*(x-xd)
-        K0, QN = LinearQuadraticRegulator(A0, B0, Q, R)
-        QN *= 100000
+        K0, QN = DiscreteTimeLinearQuadraticRegulator(A0, B0, Q, R)
         
         # allocate storage for derivatives
         Qx = np.zeros((N, n))
@@ -52,8 +52,10 @@ class IterativeLQR:
 
         # simulate forward with LQR controller about x0.
         for i in range(N):
-            u[i] = -K0.dot(x[i]) + ud
-            u[i] = 0
+            u[i] = -K0.dot(x[i]-xd) + ud
+            #-----------------hack--------------------------
+#            u[i] = -0.1
+            #-----------------------------------------------
             x_u = np.hstack((x[i], u[i]))
             x[i+1] = x[i] + h*self.CalcF(x_u)
             
@@ -95,8 +97,8 @@ class IterativeLQR:
                 luu = R
                 x_u = np.hstack((x[i], u[i]))
                 f_x_u = jacobian(self.CalcF, x_u)
-                fx = f_x_u[:, 0:n]
-                fu = f_x_u[:, n:n+m]
+                fx = h*f_x_u[:, 0:n] + np.eye(n)
+                fu = h*f_x_u[:, n:n+m]
                 
                 Qx[i] = lx + fx.T.dot(Vx[i+1])
                 Qu[i] = lu + fu.T.dot(Vx[i+1])
