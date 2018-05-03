@@ -39,7 +39,7 @@ ud = np.array([0.5, 0.5])
 QN = np.diag([100,10,10,0.1,0.1,10])
 Q = np.diag([0.01, 0.01, 0.01, 0.01, 0.01, 0.01])# lqr cost
 R = 0.1*np.eye(m) # lqr cost
-W1 = 1*np.diag([1., 0.1, 0., 0., 0., 0.])
+W1 = 1*np.diag([1., 1, 0., 0., 0., 0.])
 
 # waypoints
 x1 = np.array([0.6, 0., 0, 0, 0, 0])
@@ -47,10 +47,10 @@ t1 = h*N*0.5
 rho1 = 5
 xw = WayPoint(x1, t1, W1, rho1)
 
-traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN)
+traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, [xw])
 
 Ni = 4
-x, u, J, QN, Vx =\
+x, u, J, QN, Vx, Vxx =\
     planner.CalcTrajectory(traj_specs, Ni)
 
     

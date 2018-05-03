@@ -72,7 +72,8 @@ class DiscreteTimeIterativeLQR:
     ax_x_wpt.tick_params('y', colors='b')
     
     ax_x_wpt2 = ax_x_wpt.twinx()
-    # ax_x_wpt2.plot(t, self.discount(xw, t), 'r')
+    discount_values = [self.discount(xw, i) for i in range(N)]
+    ax_x_wpt2.plot(t, discount_values, 'r')
     ax_x_wpt2.set_ylabel('discount', color='r')
     ax_x_wpt2.tick_params('y', colors='r')
     
