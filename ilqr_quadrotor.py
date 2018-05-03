@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import sin, cos
 import matplotlib.pyplot as plt
-from iLQR import DiscreteTimeIterativeLQR
+from iLQR import DiscreteTimeIterativeLQR, WayPoint, TrajectorySpecs
 #%% initilization
 n = 6 # number of states. q = [x,y,theta], x = [q, q_dot]
 m = 2 # number of inputs
@@ -28,24 +28,35 @@ planner= DiscreteTimeIterativeLQR(CalcF, n, m)
 #%% iLQR
 h = 0.01 # time step.
 N = 600 # horizon
-x0 = np.array([1,0,0,0,0,0])
+x0 = np.array([0,0,0,0,0,0])
 u0 = np.array([0.5, 0.5])
-Q = 10*np.eye(n) # lqr cost
-# penelize angle and angular velocity
-Q[5,5] *= 10
-R = np.eye(m) # lqr cost
-# desired fixed point
-xd = np.array([0,0,0,0,0,0])
-ud = np.array([0.5, 0.5])
-Ni = 4
 
-x, u, J, QN =\
-    planner.CalcTrajectory(x0, u0, xd, ud, h, N, Q, R, Ni)
+# desired fixed point
+xd = np.array([1,0,0,0,0,0])
+ud = np.array([0.5, 0.5])
+
+# cost weights
+QN = np.diag([100,10,10,0.1,0.1,10])
+Q = np.diag([0.01, 0.01, 0.01, 0.01, 0.01, 0.01])# lqr cost
+R = 0.1*np.eye(m) # lqr cost
+W1 = 1*np.diag([1., 0.1, 0., 0., 0., 0.])
+
+# waypoints
+x1 = np.array([0.6, 0., 0, 0, 0, 0])
+t1 = h*N*0.5
+rho1 = 5
+xw = WayPoint(x1, t1, W1, rho1)
+
+traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN)
+
+Ni = 4
+x, u, J, QN, Vx =\
+    planner.CalcTrajectory(traj_specs, Ni)
 
     
-#%% plot
+# plot
 t = np.array([i*h for i in range(N+1)])
-fig = plt.figure(figsize=(6,16), dpi = 120)
+fig = plt.figure(figsize=(6,16), dpi = 100)
 ax_x = fig.add_subplot(411)
 ax_x.set_ylabel("x")
 ax_y = fig.add_subplot(412)
@@ -63,12 +74,16 @@ ax_u.axhline(color='r', ls='--')
 
 for i in range(Ni+1):
     ax_x.plot(t, x[i,:,0])
+    ax_x.plot(xw.t, xw.x[0], 'r*')
     ax_y.plot(t, x[i,:,1])
+    ax_y.plot(xw.t, xw.x[1], 'r*')
     ax_theta.plot(t, x[i,:,2])
+    ax_theta.plot(xw.t, xw.x[2], 'r*')
     ax_u.plot(t[0:-1], u[i,:,0])
-
-
-
+    
+planner.PlotCosts(x[-1], u[-1], xd, ud, Q, R, QN, [xw], h)    
+      
+    
 #%% simulate and plot
 # broken
 #dt = 0.001
