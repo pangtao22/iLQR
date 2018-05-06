@@ -43,11 +43,11 @@ class DiscreteTimeIterativeLQR:
   def PlotCosts(self, x, u, xd, ud, Q, R, QN, xw_list, h):
     N = u.shape[0]
     t = np.array([i*h for i in range(N)])
-    fig = plt.figure(figsize=(6,12), dpi = 100)
-    ax_x_lqr = fig.add_subplot(311)
+    fig_plot_costs = plt.figure(figsize=(6,12), dpi = 100)
+    ax_x_lqr = fig_plot_costs.add_subplot(311)
     ax_x_lqr.set_ylabel('x_lqr_cost')
-    ax_x_wpt = fig.add_subplot(312)
-    ax_u_lqr = fig.add_subplot(313)
+    ax_x_wpt = fig_plot_costs.add_subplot(312)
+    ax_u_lqr = fig_plot_costs.add_subplot(313)
     ax_u_lqr.set_ylabel('u_lqr_cost')
     ax_u_lqr.set_xlabel('time(s)')
     
@@ -78,7 +78,7 @@ class DiscreteTimeIterativeLQR:
     ax_x_wpt2.tick_params('y', colors='r')
     
     ax_u_lqr.plot(t, l_lqr_u)
-  
+    plt.show()
     
   # xw is a WayPoint
   def discount(self, xw, i):
@@ -273,7 +273,7 @@ class DiscreteTimeIterativeLQR:
           line_search_count += 1
           print line_search_count
                 
-    return x, u, J, traj_specs.QN, Vx, Vxx
+    return x, u, J, traj_specs.QN, Vx, Vxx, k, K
 
     
 

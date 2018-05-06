@@ -54,7 +54,7 @@ x, u, J, QN, Vx, Vxx =\
     planner.CalcTrajectory(traj_specs, Ni)
 
     
-# plot
+#%% plot
 t = np.array([i*h for i in range(N+1)])
 fig = plt.figure(figsize=(6,16), dpi = 100)
 ax_x = fig.add_subplot(411)
@@ -80,8 +80,9 @@ for i in range(Ni+1):
     ax_theta.plot(t, x[i,:,2])
     ax_theta.plot(xw.t, xw.x[2], 'r*')
     ax_u.plot(t[0:-1], u[i,:,0])
-    
-planner.PlotCosts(x[-1], u[-1], xd, ud, Q, R, QN, [xw], h)    
+plt.show()
+
+planner.PlotCosts(x[-1], u[-1], xd, ud, Q, R, QN, [xw], h)
       
     
 #%% simulate and plot
