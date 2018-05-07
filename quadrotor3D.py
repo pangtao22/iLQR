@@ -130,11 +130,57 @@ def CalcPhiD(rpy):
 
     return Phi_D
 
+
+def PlotTrajectoryMeshcat(x, dt, vis):
+    # initialize
+    vis.delete()
+    d_prop = 0.10 # propeller diameter
+    vis["quad"]["body"].set_object(geometry.Box([0.2, 0.1, 0.1]),
+                                   geometry.MeshLambertMaterial(color=0x404040))
+    vis["quad"]["prop0"].set_object(geometry.Cylinder(0.01, d_prop), 
+                                    geometry.MeshLambertMaterial(color=0x00ff00))
+    vis["quad"]["prop1"].set_object(geometry.Cylinder(0.01, d_prop),
+                                    geometry.MeshLambertMaterial(color=0xff0000))
+    vis["quad"]["prop2"].set_object(geometry.Cylinder(0.01, d_prop),
+                                    geometry.MeshLambertMaterial(color=0xffffff))
+    vis["quad"]["prop3"].set_object(geometry.Cylinder(0.01, d_prop), 
+                                    geometry.MeshLambertMaterial(color=0xffffff))
+    
+    Rx_prop = CalcRx(np.pi/2)
+    TB = tf.translation_matrix([0,0,-0.05])
+    T0 = tf.translation_matrix([l, -l, 0])
+    T1 = tf.translation_matrix([l, l, 0])
+    T2 = tf.translation_matrix([-l, l, 0])
+    T3 = tf.translation_matrix([-l, -l, 0])
+    T0[0:3,0:3] = Rx_prop
+    T1[0:3,0:3] = Rx_prop
+    T2[0:3,0:3] = Rx_prop
+    T3[0:3,0:3] = Rx_prop
+    
+    vis["quad"]["body"].set_transform(TB)
+    vis["quad"]["prop0"].set_transform(T0)
+    vis["quad"]["prop1"].set_transform(T1)
+    vis["quad"]["prop2"].set_transform(T2)
+    vis["quad"]["prop3"].set_transform(T3)
+    
+    # visualize trajectory
+    time.sleep(1.0)
+    for xi in x:
+        xyz = xi[0:3]
+        rpy = xi[3:6]
+        R_WB = CalcR_WB(rpy)
+        T = tf.translation_matrix(xyz)
+        T[0:3,0:3] = R_WB
+        vis["quad"].set_transform(T)
+        time.sleep(dt)
+
+# intertial and gravitational constants
 mass = 0.5
 I = np.array([[0.0023, 0, 0],
               [0, 0.0023, 0],
               [0, 0, 0.0040]])
 g = 10.
+
 # define dynamics in a separate function, so that it can be passed to
 # ForwardDiff.jacobian for derivatives.
 def CalcF(x_u):
@@ -178,10 +224,68 @@ def CalcF(x_u):
     xdot[9:12] = rpy_dd
     return xdot
     
+def PlotTraj(x, dt, xw_list=None):
+    # add one dimension to x if x is 2D. 
+    if len(x.shape) == 2:
+        x.resize(1, x.shape[0], x.shape[1])
+        
+    Ni = x.shape[0]
+    N = x.shape[1]-1
+    t = dt*np.arange(N+1)
+    fig = plt.figure(figsize=(15,12), dpi = 100)
+
+    ax_x = fig.add_subplot(321)
+    ax_x.set_ylabel("x")
+    ax_x.axhline(color='r', ls='--')
+
+    ax_y = fig.add_subplot(322)
+    ax_y.set_ylabel("y")
+    ax_y.axhline(color='r', ls='--')
+
+    ax_z = fig.add_subplot(323)
+    ax_z.set_ylabel("z")
+    ax_z.axhline(color='r', ls='--')
+
+    ax_roll = fig.add_subplot(324)
+    ax_roll.set_ylabel("roll(phi)")
+    ax_roll.set_xlabel("t")
+    ax_roll.axhline(color='r', ls='--')
+
+    ax_pitch = fig.add_subplot(325)
+    ax_pitch.set_ylabel("pitch(theta)")
+    ax_pitch.set_xlabel("t")
+    ax_pitch.axhline(color='r', ls='--')
+
+    ax_yaw = fig.add_subplot(326)
+    ax_yaw.set_ylabel("yaw(psi)")
+    ax_yaw.set_xlabel("t")
+    ax_yaw.axhline(color='r', ls='--')    
+    
+    for j in range(Ni):
+        ax_x.plot(t, x[j,:,0])
+        ax_y.plot(t, x[j,:,1])
+        ax_z.plot(t, x[j,:,2])
+        ax_roll.plot(t, x[j,:,3])
+        ax_pitch.plot(t, x[j,:,4])
+        ax_yaw.plot(t, x[j,:,5])
+    
+    # plot waypoints
+    if not(xw_list is None):
+        for xw in xw_list:
+            ax_x.plot(xw.t, xw.x[0], 'r*')
+            ax_y.plot(xw.t, xw.x[1], 'r*')
+            ax_z.plot(xw.t, xw.x[2], 'r*')
+            ax_roll.plot(xw.t, xw.x[3], 'r*')
+            ax_pitch.plot(xw.t, xw.x[4], 'r*')
+            ax_yaw.plot(xw.t, xw.x[5], 'r*')
+    
+    plt.show()
+    
 
 if __name__ == '__main__':
     # fixed point
     xd = np.zeros(n)
+    xd[0:2] = [2,1]
     ud = np.zeros(m)
     ud[:] = mass * g / 4
     x_u = np.hstack((xd, ud))
@@ -196,107 +300,25 @@ if __name__ == '__main__':
 
     # simulate stabilizing about fixed point using LQR controller
     dt = 0.001
-    N = int(5.0/dt)
+    N = int(4.0/dt)
     x = np.zeros((N+1, n))
 
     x0 = np.zeros(n)
-    x0[0:3] = 0.5
-    x0[5] = 0.5*np.pi
     x[0] = x0
 
     for i in range(N):
         x_u = np.hstack((x[i], -K0.dot(x[i]-xd) + ud))
         x[i+1] = x[i] + dt*CalcF(x_u)
 
-    t = dt*np.arange(N+1)
-    fig = plt.figure(figsize=(15,12), dpi = 100)
+    PlotTraj(x.copy(), dt)
 
-    ax_x = fig.add_subplot(321)
-    ax_x.set_ylabel("x")
-    ax_x.plot(t, x[:,0])
-    ax_x.axhline(color='r', ls='--')
-
-    ax_y = fig.add_subplot(322)
-    ax_y.set_ylabel("y")
-    ax_y.plot(t, x[:,1])
-    ax_y.axhline(color='r', ls='--')
-
-    ax_y = fig.add_subplot(323)
-    ax_y.set_ylabel("z")
-    ax_y.plot(t, x[:,2])
-    ax_y.axhline(color='r', ls='--')
-
-    ax_phase = fig.add_subplot(324)
-    ax_phase.set_ylabel("roll(phi)")
-    ax_phase.set_xlabel("t")
-    ax_phase.plot(t, x[:,3])
-    ax_phase.axhline(color='r', ls='--')
-
-    ax_phase = fig.add_subplot(325)
-    ax_phase.set_ylabel("pitch(theta)")
-    ax_phase.set_xlabel("t")
-    ax_phase.plot(t, x[:,4])
-    ax_phase.axhline(color='r', ls='--')
-
-    ax_phase = fig.add_subplot(326)
-    ax_phase.set_ylabel("yaw(psi)")
-    ax_phase.set_xlabel("t")
-    ax_phase.plot(t, x[:,5])
-    ax_phase.axhline(color='r', ls='--')
-
-
-#%% meshact
-vis = meshcat.Visualizer()
-vis.open
-
-
-#%%
-def PlotTrajectoryMeshcat(x, dt, vis):
-    # initialize
-    vis.delete()
-    d_prop = 0.10 # propeller diameter
-    vis["quad"]["body"].set_object(geometry.Box([0.2, 0.1, 0.1]),
-                                   geometry.MeshLambertMaterial(color=0x404040))
-    vis["quad"]["prop0"].set_object(geometry.Cylinder(0.01, d_prop), 
-                                    geometry.MeshLambertMaterial(color=0x00ff00))
-    vis["quad"]["prop1"].set_object(geometry.Cylinder(0.01, d_prop),
-                                    geometry.MeshLambertMaterial(color=0xff0000))
-    vis["quad"]["prop2"].set_object(geometry.Cylinder(0.01, d_prop),
-                                    geometry.MeshLambertMaterial(color=0xffffff))
-    vis["quad"]["prop3"].set_object(geometry.Cylinder(0.01, d_prop), 
-                                    geometry.MeshLambertMaterial(color=0xffffff))
-    
-    Rx_prop = CalcRx(np.pi/2)
-    TB = tf.translation_matrix([0,0,-0.05])
-    T0 = tf.translation_matrix([l, -l, 0])
-    T1 = tf.translation_matrix([l, l, 0])
-    T2 = tf.translation_matrix([-l, l, 0])
-    T3 = tf.translation_matrix([-l, -l, 0])
-    T0[0:3,0:3] = Rx_prop
-    T1[0:3,0:3] = Rx_prop
-    T2[0:3,0:3] = Rx_prop
-    T3[0:3,0:3] = Rx_prop
-    
-    vis["quad"]["body"].set_transform(TB)
-    vis["quad"]["prop0"].set_transform(T0)
-    vis["quad"]["prop1"].set_transform(T1)
-    vis["quad"]["prop2"].set_transform(T2)
-    vis["quad"]["prop3"].set_transform(T3)
-    
-    # visualize trajectory
-    time.sleep(1.0)
-    for xi in x:
-        xyz = xi[0:3]
-        rpy = xi[3:6]
-        R_WB = CalcR_WB(rpy)
-        T = tf.translation_matrix(xyz)
-        T[0:3,0:3] = R_WB
-        vis["quad"].set_transform(T)
-        time.sleep(dt)
-    
-    
-    
-PlotTrajectoryMeshcat(x, dt, vis)
+#    #%% open meshact
+#    vis = meshcat.Visualizer()
+#    vis.open
+#    
+#    
+#    #%% Meshcat animation
+    PlotTrajectoryMeshcat(x, dt, vis)
 
 
 

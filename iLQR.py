@@ -7,30 +7,30 @@ import matplotlib.pyplot as plt
 # behaviors th
 
 class WayPoint:
-  def __init__(self, x, t, W, rho):
-    x = np.asarray(x)
-    assert len(x.shape) == 1 # x is 1d np array
-    n = x.size
-    assert W.shape == (n,n)
-    assert t>=0
-    assert rho > 0
-    self.x = x
-    self.t = t
-    self.W = W
-    self.rho = rho
+    def __init__(self, x, t, W, rho):
+        x = np.asarray(x)
+        assert len(x.shape) == 1 # x is 1d np array
+        n = x.size
+        assert W.shape == (n,n)
+        assert t>=0
+        assert rho > 0
+        self.x = x
+        self.t = t
+        self.W = W
+        self.rho = rho
     
 class TrajectorySpecs:
-  def __init__(self, x0, u0, xd, ud, h, N, Q, R, QN = None, xw_list=None):
-    self.x0 = x0
-    self.u0 = u0
-    self.xd = xd
-    self.ud = ud
-    self.h = h
-    self.N = N
-    self.Q = Q
-    self.R = R
-    self.QN = QN
-    self.xw_list = xw_list
+    def __init__(self, x0, u0, xd, ud, h, N, Q, R, QN = None, xw_list=None):
+        self.x0 = x0
+        self.u0 = u0
+        self.xd = xd
+        self.ud = ud
+        self.h = h
+        self.N = N
+        self.Q = Q
+        self.R = R
+        self.QN = QN
+        self.xw_list = xw_list
     
 
 class DiscreteTimeIterativeLQR:
@@ -52,32 +52,33 @@ class DiscreteTimeIterativeLQR:
     ax_u_lqr.set_xlabel('time(s)')
     
     # only plots the cost of the first waypoint.
-    xw = xw_list[0]
     l_lqr_x = np.zeros(N)
     l_lqr_u = np.zeros(N)
-    l_wpt = np.zeros(N)
     final_cost = (x[N] - xd).dot(QN.dot(x[N] - xd))
     for i in range(N):
       l_lqr_x[i] = (x[i] - xd).dot(Q.dot(x[i] - xd))
-      l_lqr_u[i] = (u[i]-ud).dot(R.dot(u[i]-ud))  
-      dx = x[i] - xw.x
-      l_wpt[i] = dx.dot(xw.W.dot(dx))*self.discount(xw, i)
-      
+      l_lqr_u[i] = (u[i]-ud).dot(R.dot(u[i]-ud)) 
+    
     ax_x_lqr.plot(t, l_lqr_x)
     ax_x_lqr.axhline(final_cost, final_cost, color='r', ls='--')
-    
-    ax_x_wpt.plot(t, l_wpt, color='b')
-    # Make the y-axis label, ticks and tick labels match the line color.
-    ax_x_wpt.set_ylabel('x_waypoint_cost', color='b')
-    ax_x_wpt.tick_params('y', colors='b')
-    
-    ax_x_wpt2 = ax_x_wpt.twinx()
-    discount_values = [self.discount(xw, i) for i in range(N)]
-    ax_x_wpt2.plot(t, discount_values, 'r')
-    ax_x_wpt2.set_ylabel('discount', color='r')
-    ax_x_wpt2.tick_params('y', colors='r')
-    
     ax_u_lqr.plot(t, l_lqr_u)
+    if not(xw_list is None):
+        xw = xw_list[0]
+        l_wpt = np.zeros(N)
+        for i in range(N):
+            dx = x[i] - xw.x
+            l_wpt[i] = dx.dot(xw.W.dot(dx))*self.discount(xw, i)
+        ax_x_wpt.plot(t, l_wpt, color='b')
+        # Make the y-axis label, ticks and tick labels match the line color.
+        ax_x_wpt.set_ylabel('x_waypoint_cost', color='b')
+        ax_x_wpt.tick_params('y', colors='b')
+    
+        ax_x_wpt2 = ax_x_wpt.twinx()
+        discount_values = [self.discount(xw, i) for i in range(N)]
+        ax_x_wpt2.plot(t, discount_values, 'r')
+        ax_x_wpt2.set_ylabel('discount', color='r')
+        ax_x_wpt2.tick_params('y', colors='r')
+
     plt.show()
     
   # xw is a WayPoint
@@ -185,23 +186,25 @@ class DiscreteTimeIterativeLQR:
     u = np.zeros((Ni+1, traj_specs.N, self.m))
     x[0,0] = traj_specs.x0
     
-#     initialize first trajectory by 
-#     simulating forward with LQR controller about x0.
-#    K0, P0 = CallLQR(x0, u0, Q, R)
-#    for i in range(N):
-#      u[0, i] = -K0.dot(x[0, i]-x0) + u0
-#      x_u = np.hstack((x[0, i], u[0, i]))
-#      x[0, i+1] = x[0, i] + h*self.CalcF(x_u)
+    '''
+     initialize first trajectory by 
+     simulating forward with LQR controller about x0.
+    '''
+    K0, P0 = CallLQR(traj_specs.x0, traj_specs.u0, traj_specs.Q, traj_specs.R)
+    for i in range(traj_specs.N):
+      u[0, i] = -K0.dot(x[0, i]-traj_specs.x0) + traj_specs.u0
+      x_u = np.hstack((x[0, i], u[0, i]))
+      x[0, i+1] = x[0, i] + traj_specs.h*self.CalcF(x_u)
     
     '''
     initialize first trajectory by 
     simulating forward with LQR controller about xd.
     '''
-    Kd, Qd = CallLQR(traj_specs.xd, traj_specs.ud, traj_specs.Q, traj_specs.R)
-    for i in range(traj_specs.N):
-      u[0, i] = -Kd.dot(x[0, i]-traj_specs.xd) + traj_specs.ud
-      x_u = np.hstack((x[0, i], u[0, i]))
-      x[0, i+1] = x[0, i] + traj_specs.h*self.CalcF(x_u)
+#    Kd, Qd = CallLQR(traj_specs.xd, traj_specs.ud, traj_specs.Q, traj_specs.R)
+#    for i in range(traj_specs.N):
+#      u[0, i] = -Kd.dot(x[0, i]-traj_specs.xd) + traj_specs.ud
+#      x_u = np.hstack((x[0, i], u[0, i]))
+#      x[0, i+1] = x[0, i] + traj_specs.h*self.CalcF(x_u)
     
 
     # logging
@@ -236,9 +239,16 @@ class DiscreteTimeIterativeLQR:
         Qux[i] = fu.T.dot(Vxx[i+1].dot(fx))
         
         # compute k and K
-        Quu_inv = LA.inv(Quu[i])
-        k[i] = -Quu_inv.dot(Qu[i])
-        K[i] = -Quu_inv.dot(Qux[i])
+        U_Quu, s_Quu, V_Quu = LA.svd(Quu[i])
+        print j,i
+        print s_Quu
+        if min(s_Quu) > 1e10:
+            k[i,:] = 0
+            K[i,:] = 0
+        else:
+            Quu_inv = LA.inv(Quu[i])
+            k[i] = -Quu_inv.dot(Qu[i])
+            K[i] = -Quu_inv.dot(Qux[i])
         
         # update derivatives of V
         # Quu_inv_log[j, i] = Quu_inv
