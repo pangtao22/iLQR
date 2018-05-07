@@ -255,7 +255,11 @@ class DiscreteTimeIterativeLQR:
         delta_V[i] = 0.5*Qu[i].dot(k[i])
         Vx[i] = Qx[i] + Qu[i].dot(K[i])
         Vxx[i] = Qxx[i] + Qux[i].T.dot(K[i])
-                     
+#        U_Vxx, s_Vxx, V_Vxx = LA.svd(Vxx[i])
+#        print s_Vxx
+        egv_Vxx = LA.eigvals(Vxx[i])
+        print egv_Vxx
+            
       # forward pass
       del i
       x[j+1, 0] = x[j, 0]
