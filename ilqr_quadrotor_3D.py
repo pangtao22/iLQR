@@ -7,8 +7,8 @@ import meshcat
 #%% initilization
 planner= DiscreteTimeIterativeLQR(CalcF, n, m)
 #%% iLQR
-h = 0.005 # time step.
-N = 400 # horizon
+h = 0.01 # time step.
+N = 200 # horizon
 x0 = np.zeros(n)
 u0 = np.zeros(m)
 u0[:] = mass * g / 4

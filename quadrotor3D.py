@@ -298,11 +298,7 @@ class Quadrotor(VectorSystem):
             m,                           # No. of inputs.
             n)                           # No. of output.
         self._DeclareContinuousState(n)
-        self.mass = 0.5
-        self.I = np.array([[0.0023, 0, 0],
-                      [0, 0.0023, 0],
-                      [0, 0, 0.0040]])
-        self.g = 10.
+#        self._DeclarePeriodicPublish(0.005)
 
     # define dynamics in a separate function, so that it can be passed to
     # ForwardDiff.jacobian for derivatives.
