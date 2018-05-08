@@ -37,6 +37,12 @@ kM = 0.0245
 l = 0.175/np.sqrt(2.0) # (length of one arm) / sqrt(2)
 n = 12 # 12 states
 m = 4 # 4 inputs
+# intertial and gravitational constants
+mass = 0.5
+I = np.array([[0.0023, 0, 0],
+              [0, 0.0023, 0],
+              [0, 0, 0.0040]])
+g = 10.
 
 
 def CalcRx(phi):
@@ -167,9 +173,9 @@ def PlotTrajectoryMeshcat(x, vis, dt = None, t = None):
     
     # visualize trajectory
     time.sleep(1.0)
+    N = len(x)
     if not (t is None):
-        N = len(t)
-        assert N == len(x)
+        assert N == len(t)
         
     for i, xi in enumerate(x):
         xyz = xi[0:3]
@@ -181,13 +187,6 @@ def PlotTrajectoryMeshcat(x, vis, dt = None, t = None):
         if i < N-1  and not(t is None):
             dt = t[i+1] - t[i]
         time.sleep(dt)
-
-# intertial and gravitational constants
-mass = 0.5
-I = np.array([[0.0023, 0, 0],
-              [0, 0.0023, 0],
-              [0, 0, 0.0040]])
-g = 10.
 
 # define dynamics in a separate function, so that it can be passed to
 # ForwardDiff.jacobian for derivatives.

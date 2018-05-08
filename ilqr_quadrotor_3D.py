@@ -39,17 +39,14 @@ xw = WayPoint(x1, t1, W1, rho1)
 
 traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, xw_list=[xw])
 
-Ni = 4
-x, u, J, QN, Vx, Vxx, k, K =\
-    planner.CalcTrajectory(traj_specs, Ni)
+if __name__ == "__main__":
+    Ni = 4
+    x, u, J, QN, Vx, Vxx, k, K = planner.CalcTrajectory(traj_specs, Ni)
     
-PlotTraj(x, h, [xw])
-#planner.PlotCosts(x[-1], u[-1], xd, ud, Q, R, QN, [xw], h)
+    PlotTraj(x, h, [xw])
+    #%% open meshcat
+    vis = meshcat.Visualizer()
+    vis.open
 
-
-#%% open meshcat
-vis = meshcat.Visualizer()
-vis.open
-
-#%% Meshcat animation
-PlotTrajectoryMeshcat(x[-1], vis, h)
+    #%% Meshcat animation
+    PlotTrajectoryMeshcat(x[-1], vis, h)

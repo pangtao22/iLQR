@@ -5,7 +5,7 @@ import numpy as np
 from pydrake.systems.framework import VectorSystem
 from pydrake.forwarddiff import jacobian
 from quadrotor3D import Quadrotor, n, m, mass, g, CalcF, PlotTraj, PlotTrajectoryMeshcat
-
+from ilqr_quadrotor_3D import traj_specs, planner
 import meshcat
 #%% get LQR controller about goal point
 # fixed point
