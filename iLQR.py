@@ -1,5 +1,5 @@
 from pydrake.forwarddiff import jacobian
-from pydrake.all import DiscreteTimeLinearQuadraticRegulator
+from pydrake.all import LinearQuadraticRegulator
 import numpy as np
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
@@ -139,9 +139,9 @@ class DiscreteTimeIterativeLQR:
 
     def CallLQR(x, u, Q, R):
       f_x_u = jacobian(self.CalcF, np.hstack((x, u)))
-      A = traj_specs.h*f_x_u[:, 0:self.n] + np.eye(self.n)
-      B = traj_specs.h*f_x_u[:, self.n:self.n+self.m]
-      K, P = DiscreteTimeLinearQuadraticRegulator(A, B, Q, R)
+      A = f_x_u[:, 0:self.n] 
+      B = f_x_u[:, self.n:self.n+self.m]
+      K, P = LinearQuadraticRegulator(A, B, Q, R)
       return K, P
     
     # linearize about target/goal position
@@ -211,6 +211,7 @@ class DiscreteTimeIterativeLQR:
     # Quu_inv_log = np.zeros((Ni, N, m, m))
     J = np.zeros(Ni+1)
     J[0] = self.CalcJ(x[0], u[0])
+    print "initial cost: ", J[0]
     
     # It really should be a while loop, but for linear systems one 
     # iteration seems sufficient. And I am sure this can be proven.
@@ -239,26 +240,16 @@ class DiscreteTimeIterativeLQR:
         Qux[i] = fu.T.dot(Vxx[i+1].dot(fx))
         
         # compute k and K
-        U_Quu, s_Quu, V_Quu = LA.svd(Quu[i])
-        print j,i
-        print s_Quu
-        if min(s_Quu) > 1e10:
-            k[i,:] = 0
-            K[i,:] = 0
-        else:
-            Quu_inv = LA.inv(Quu[i])
-            k[i] = -Quu_inv.dot(Qu[i])
-            K[i] = -Quu_inv.dot(Qux[i])
+        k[i] = -LA.solve(Quu[i], Qu[i]) # Quu_inv.dot(Qu[i])
+        K[i] = -LA.solve(Quu[i], Qux[i]) # Quu_inv.dot(Qux[i])
         
         # update derivatives of V
-        # Quu_inv_log[j, i] = Quu_inv
-        delta_V[i] = 0.5*Qu[i].dot(k[i])
-        Vx[i] = Qx[i] + Qu[i].dot(K[i])
-        Vxx[i] = Qxx[i] + Qux[i].T.dot(K[i])
-#        U_Vxx, s_Vxx, V_Vxx = LA.svd(Vxx[i])
-#        print s_Vxx
-        egv_Vxx = LA.eigvals(Vxx[i])
-        print egv_Vxx
+#        delta_V[i] = 0.5*Qu[i].dot(k[i])
+#        Vx[i] = Qx[i] + Qu[i].dot(K[i])
+#        Vxx[i] = Qxx[i] + Qux[i].T.dot(K[i])
+        delta_V[i] = 0.5*k[i].dot(Quu[i].dot(k[i])) + Qu[i].dot(k[i])
+        Vx[i] = Qx[i] + K[i].T.dot(Quu[i].dot(k[i])) + K[i].T.dot(Qu[i]) + Qux[i].T.dot(k[i])
+        Vxx[i] = Qxx[i] + K[i].T.dot(Quu[i].dot(K[i])) + K[i].T.dot(Qux[i]) + Qux[i].T.dot(K[i])        
             
       # forward pass
       del i
@@ -285,8 +276,8 @@ class DiscreteTimeIterativeLQR:
         else:
           alpha *= 0.5
           line_search_count += 1
-          print line_search_count
-                
+          
+      print "Iteration ", j, ", line search steps: ", line_search_count, ", J: ", J[j+1]
     return x, u, J, traj_specs.QN, Vx, Vxx, k, K
 
     

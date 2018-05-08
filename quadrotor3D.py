@@ -3,12 +3,14 @@ from numpy import sin, cos
 from numpy import linalg as LA
 from pydrake.forwarddiff import jacobian
 from pydrake.all import LinearQuadraticRegulator
+from pydrake.systems.framework import VectorSystem
 import matplotlib.pyplot as plt
 # for meshcat
 import time
 import meshcat
 import meshcat.geometry as geometry
 import meshcat.transformations as tf
+
 '''
 x = [q, q_dot]
 q = [x,y,z, phi(roll), theta(pitch), psi(yaw)]
@@ -131,7 +133,7 @@ def CalcPhiD(rpy):
     return Phi_D
 
 
-def PlotTrajectoryMeshcat(x, dt, vis):
+def PlotTrajectoryMeshcat(x, vis, dt = None, t = None):
     # initialize
     vis.delete()
     d_prop = 0.10 # propeller diameter
@@ -165,13 +167,19 @@ def PlotTrajectoryMeshcat(x, dt, vis):
     
     # visualize trajectory
     time.sleep(1.0)
-    for xi in x:
+    if not (t is None):
+        N = len(t)
+        assert N == len(x)
+        
+    for i, xi in enumerate(x):
         xyz = xi[0:3]
         rpy = xi[3:6]
         R_WB = CalcR_WB(rpy)
         T = tf.translation_matrix(xyz)
         T[0:3,0:3] = R_WB
         vis["quad"].set_transform(T)
+        if i < N-1  and not(t is None):
+            dt = t[i+1] - t[i]
         time.sleep(dt)
 
 # intertial and gravitational constants
@@ -224,14 +232,16 @@ def CalcF(x_u):
     xdot[9:12] = rpy_dd
     return xdot
     
-def PlotTraj(x, dt, xw_list=None):
+def PlotTraj(x, dt = None, xw_list = None, t = None):
     # add one dimension to x if x is 2D. 
     if len(x.shape) == 2:
         x.resize(1, x.shape[0], x.shape[1])
-        
+    
+    if t is None:
+        N = x.shape[1]-1
+        t = dt*np.arange(N+1)
     Ni = x.shape[0]
-    N = x.shape[1]-1
-    t = dt*np.arange(N+1)
+
     fig = plt.figure(figsize=(15,12), dpi = 100)
 
     ax_x = fig.add_subplot(321)
@@ -281,8 +291,52 @@ def PlotTraj(x, dt, xw_list=None):
     
     plt.show()
     
+    
+# Defines a drake vector system for the quadrotor.
+class Quadrotor(VectorSystem):
+    def __init__(self):
+        VectorSystem.__init__(self,
+            m,                           # No. of inputs.
+            n)                           # No. of output.
+        self._DeclareContinuousState(n)
+        self.mass = 0.5
+        self.I = np.array([[0.0023, 0, 0],
+                      [0, 0.0023, 0],
+                      [0, 0, 0.0040]])
+        self.g = 10.
+
+    # define dynamics in a separate function, so that it can be passed to
+    # ForwardDiff.jacobian for derivatives.
+    def f(self, x_u):
+        return CalcF(x_u)
+
+    # xdot(t) = -x(t) + x^3(t)
+    def _DoCalcVectorTimeDerivatives(self, context, u, x, xdot):
+        x_u = np.hstack((x.flatten(), u.flatten()))
+        xdot[:] = self.f(x_u)
+
+    # y(t) = x(t)
+    def _DoCalcVectorOutput(self, context, u, x, y):
+        y[:] = x
+    
+    ### copied from Greg's pset code. (set1, custom_pendulum.py, line67-79)
+    # The Drake simulation backend is very careful to avoid
+    # algebraic loops when systems are connected in feedback.
+    # This system does not feed its inputs directly to its
+    # outputs (the output is only a function of the state),
+    # so we can safely tell the simulator that we don't have
+    # any direct feedthrough.
+    def _DoHasDirectFeedthrough(self, input_port, output_port):
+        if input_port == 0 and output_port == 0:
+            return False
+        else:
+            # For other combinations of i/o, we will return
+            # "None", i.e. "I don't know."
+            return None
+    
 
 if __name__ == '__main__':
+    # simulate quadrotor w/ LQR controller using forward Euler integration.
     # fixed point
     xd = np.zeros(n)
     xd[0:2] = [2,1]
@@ -318,7 +372,7 @@ if __name__ == '__main__':
 #    
 #    
 #    #%% Meshcat animation
-    PlotTrajectoryMeshcat(x, dt, vis)
+#    PlotTrajectoryMeshcat(x, dt, vis)
 
 
 

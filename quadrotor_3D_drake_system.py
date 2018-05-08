@@ -189,6 +189,21 @@ class Quadrotor(VectorSystem):
     # y(t) = x(t)
     def _DoCalcVectorOutput(self, context, u, x, y):
         y[:] = x
+    
+    ### copied from Greg's pset code. (set1, custom_pendulum.py, line67-79)
+    # The Drake simulation backend is very careful to avoid
+    # algebraic loops when systems are connected in feedback.
+    # This system does not feed its inputs directly to its
+    # outputs (the output is only a function of the state),
+    # so we can safely tell the simulator that we don't have
+    # any direct feedthrough.
+    def _DoHasDirectFeedthrough(self, input_port, output_port):
+        if input_port == 0 and output_port == 0:
+            return False
+        else:
+            # For other combinations of i/o, we will return
+            # "None", i.e. "I don't know."
+            return None
 
 
 if __name__ == '__main__':

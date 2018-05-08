@@ -7,8 +7,8 @@ import meshcat
 #%% initilization
 planner= DiscreteTimeIterativeLQR(CalcF, n, m)
 #%% iLQR
-h = 0.004 # time step.
-N = 500 # horizon
+h = 0.005 # time step.
+N = 400 # horizon
 x0 = np.zeros(n)
 u0 = np.zeros(m)
 u0[:] = mass * g / 4
@@ -39,7 +39,7 @@ xw = WayPoint(x1, t1, W1, rho1)
 
 traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, xw_list=[xw])
 
-Ni = 1
+Ni = 4
 x, u, J, QN, Vx, Vxx, k, K =\
     planner.CalcTrajectory(traj_specs, Ni)
     
@@ -52,5 +52,4 @@ vis = meshcat.Visualizer()
 vis.open
 
 #%% Meshcat animation
-PlotTrajectoryMeshcat(x[-1], h, vis)
-
+PlotTrajectoryMeshcat(x[-1], vis, h)

@@ -47,9 +47,9 @@ t1 = h*N*0.5
 rho1 = 5
 xw = WayPoint(x1, t1, W1, rho1)
 
-traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, [xw])
+traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN)
 
-Ni = 4
+Ni = 2
 x, u, J, QN, Vx, Vxx, k, K =\
     planner.CalcTrajectory(traj_specs, Ni)
 
