@@ -33,7 +33,10 @@ class QuadLqrController(LeafSystem):
         if i >= len(k):
             i = len(k) -1
         print i, t
-        return u_nominal[i] + k[i] + K[i].dot(x-x_nominal[i])
+        print 'u_nominal[i]:', u_nominal[i]
+        print 'k[i]:', k[i]
+        print 'K*x_error:', K[i].dot(x-x_nominal[i])
+        return u_nominal[i] + K[i].dot(x-x_nominal[i])
 
 
     def _DoCalcDiscreteVariableUpdates(self, context, events, discrete_state):

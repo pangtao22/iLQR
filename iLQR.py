@@ -192,21 +192,21 @@ class DiscreteTimeIterativeLQR:
         initialize first trajectory by 
         simulating forward with LQR controller about x0.
         '''
-        K0, P0 = CallLQR(traj_specs.x0, traj_specs.u0, traj_specs.Q, traj_specs.R)
-        for i in range(traj_specs.N):
-            u[i] = -K0.dot(x[i]-traj_specs.x0) + traj_specs.u0
-            x_u = np.hstack((x[i], u[i]))
-            x[i+1] = x[i] + traj_specs.h*self.CalcF(x_u)
+#        K0, P0 = CallLQR(traj_specs.x0, traj_specs.u0, traj_specs.Q, traj_specs.R)
+#        for i in range(traj_specs.N):
+#            u[i] = -K0.dot(x[i]-traj_specs.x0) + traj_specs.u0
+#            x_u = np.hstack((x[i], u[i]))
+#            x[i+1] = x[i] + traj_specs.h*self.CalcF(x_u)
         
         '''
         initialize first trajectory by 
         simulating forward with LQR controller about xd.
         '''
-        #    Kd, Qd = CallLQR(traj_specs.xd, traj_specs.ud, traj_specs.Q, traj_specs.R)
-        #    for i in range(traj_specs.N):
-        #      u[0, i] = -Kd.dot(x[0, i]-traj_specs.xd) + traj_specs.ud
-        #      x_u = np.hstack((x[0, i], u[0, i]))
-        #      x[0, i+1] = x[0, i] + traj_specs.h*self.CalcF(x_u)
+        Kd, Qd = CallLQR(traj_specs.xd, traj_specs.ud, traj_specs.Q, traj_specs.R)
+        for i in range(traj_specs.N):
+            u[i] = -Kd.dot(x[i]-traj_specs.xd) + traj_specs.ud
+            x_u = np.hstack((x[i], u[i]))
+            x[i+1] = x[i] + traj_specs.h*self.CalcF(x_u)
         
         # logging
         max_iterations = 5 # number of maximum iterations (forward + backward passes)
