@@ -232,6 +232,7 @@ def CalcF(x_u):
     return xdot
     
 def PlotTraj(x, dt = None, xw_list = None, t = None):
+    x = x.copy() # removes reference to input variable.
     # add one dimension to x if x is 2D. 
     if len(x.shape) == 2:
         x.resize(1, x.shape[0], x.shape[1])

@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 import meshcat
 #%% get iLQR controller
 # fixed point
-x_nominal, u_nominal, J, QN, Vx, Vxx, k, K = planner.CalcTrajectory(traj_specs, is_logging_trajectories = False)
+Ni = 4
+x_nominal, u, J, QN, Vx, Vxx, k, K = planner.CalcTrajectory(traj_specs, Ni)
 
 PlotTraj(x_nominal, traj_specs.h, traj_specs.xw_list)
 
@@ -33,7 +34,8 @@ class QuadLqrController(LeafSystem):
         if i >= len(k):
             i = len(k) -1
         print i, t
-        return u_nominal[i] + k[i] + K[i].dot(x-x_nominal[i])
+        ud = traj_specs.ud
+        return ud + k[i] + K[i].dot(x-x_nominal[-1,i])
 
 
     def _DoCalcDiscreteVariableUpdates(self, context, events, discrete_state):
