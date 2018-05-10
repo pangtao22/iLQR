@@ -88,4 +88,4 @@ vis = meshcat.Visualizer()
 vis.open()
 
 #%% meshcat animation
-PlotTrajectoryMeshcat(logger_x.data().T, vis, None, logger_x.sample_times())
+PlotTrajectoryMeshcat(logger_x.data().T, logger_x.sample_times(), vis)
