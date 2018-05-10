@@ -45,9 +45,7 @@ xw = WayPoint(x1, t1, W1, rho1)
 
 traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN)
 traj_specs2 = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, [xw])
-Ni = 3
-x, u, J, QN, Vx, Vxx, k, K =\
-    planner.CalcTrajectory(traj_specs2, Ni)
+x, u, J, QN, Vx, Vxx, k, K = planner.CalcTrajectory(traj_specs)
 
     
 #%% plot
@@ -68,8 +66,8 @@ ax_xdot.axhline(color='r', ls='--')
 ax_u.axhline(color='r', ls='--')
 
 ax_x.plot(xw.t, xw.x[0], 'r*')
-
-for i in range(Ni+1):
+Ni = len(x)
+for i in range(Ni):
   ax_x.plot(t, x[i,:,0])
   ax_xdot.plot(t, x[i,:,1])
   ax_u.plot(t[0:-1], u[i,:,0])

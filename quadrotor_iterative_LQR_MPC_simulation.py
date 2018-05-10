@@ -19,7 +19,7 @@ u0[:] = mass * g / 4
 
 # desired fixed point
 xd = np.zeros(n)
-xd[0:2] = [2.,1]
+xd[0:3] = [2.,1, 1]
 ud = np.zeros(m)
 ud[:] = u0
 
@@ -32,8 +32,8 @@ R = np.eye(m) # lqr cost
 
 # waypoints
 x1 = np.zeros(n)
-x1[0:2] = [1,0.2]
-t1 = h*N*0.3
+x1[0:3] = [1, 0, 0.5]
+t1 = 1.0
 W1 = np.zeros(n)
 W1_vec = np.zeros(n)
 W1_vec[0:2] = 1
@@ -42,7 +42,7 @@ W1 = 10*np.diag(W1_vec)
 rho1 = 5
 xw = WayPoint(x1, t1, W1, rho1)
 
-traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, xw_list=None)
+traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, xw_list=[xw])
 #%% Build drake diagram system and simulate.
 builder = DiagramBuilder()
 quad = builder.AddSystem(Quadrotor())
@@ -59,20 +59,12 @@ class QuadIlqrMpcController(LeafSystem):
 
     # u(t) = -K.dot(x(t)) ==> y(t) = -K.dot(u)
     def ComputeControlInput(self, x, u, t):
-#        if np.linalg.norm(u) < 1e-1:
-#            u = traj_specs.ud
         traj_specs.x0[:] = x 
         traj_specs.u0[:] = u
-#        traj_specs.N = int(np.linalg.norm(x - traj_specs.xd)/traj_specs.h) + 5
-#        if traj_specs.N > N:
-#            traj_specs.N = N
-        x_nominal, u_nominal, J, QN, Vx, Vxx, k, K = planner.CalcTrajectory(traj_specs, is_logging_trajectories=False)
+        x_nominal, u_nominal, J, QN, Vx, Vxx, k, K = \
+            planner.CalcTrajectory(traj_specs, t, is_logging_trajectories=False)
         u_next = u_nominal[0]
-#        print "simulation time:", t
-#        print 'current state:', x
-#        print 'current control output:', u
-#        print 'new control output:', u_next
-#        print 'something that should be zero \n', K[0].dot(x-x_nominal[0])
+        print "simulation time:", t
         return u_next
 
 
@@ -107,21 +99,26 @@ diagram = builder.Build()
 # Create the simulator.
 simulator = Simulator(diagram)
 
+# if __name__ == '__main__':
 # Set the initial conditions, x(0).
 state = simulator.get_mutable_context().get_mutable_continuous_state_vector()
 state.SetFromVector(traj_specs.x0)
 input_vector = simulator.get_mutable_context().get_mutable_discrete_state_vector()
 input_vector.SetFromVector(traj_specs.u0)
-
-# Simulate
-simulator.StepTo(h*250)
+#%% Simulate
+simulator.StepTo(h*300)
 
 #%% plot
-PlotTraj(logger_x.data().T, None, None, logger_x.sample_times())
-
+PlotTraj(logger_x.data().T, dt=None, xw_list=traj_specs.xw_list, t=logger_x.sample_times())
+    
 #%% open meshcat 
 vis = meshcat.Visualizer()
 vis.open()
 
 #%% meshcat animation
-PlotTrajectoryMeshcat(logger_x.data().T, vis, None, logger_x.sample_times())
+wpts_list = np.zeros((len(traj_specs.xw_list)+1, 3))
+for i, xw in enumerate(traj_specs.xw_list):
+    wpts_list[i] = xw.x[0:3]
+wpts_list[-1] = traj_specs.xd[0:3]
+
+PlotTrajectoryMeshcat(logger_x.data().T, logger_x.sample_times(), vis, wpts_list)

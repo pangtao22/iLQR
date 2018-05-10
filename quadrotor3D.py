@@ -139,10 +139,24 @@ def CalcPhiD(rpy):
     return Phi_D
 
 
-def PlotTrajectoryMeshcat(x, vis, dt = None, t = None):
+# t is a 1D numpy array of time. The quadrotor has state x[i] at time t[i].
+# wpts has shape (N, 3), where wpts[i] is the Cartesian coordinate of waypoint i. 
+def PlotTrajectoryMeshcat(x, t, vis, wpts_list = None):
     # initialize
     vis.delete()
+    
+    # plot waypoints
+    if not(wpts_list is None):
+        for i, wpts in enumerate(wpts_list):
+            vis["wpt_%d" % i].set_object(geometry.Sphere(0.03), 
+                                         geometry.MeshLambertMaterial(color=0xffff00))
+            T_wp = tf.translation_matrix(wpts)
+            vis["wpt_%d" % i].set_transform(T_wp)
+    
+    
     d_prop = 0.10 # propeller diameter
+    vis["quad"]["CG"].set_object(geometry.Sphere(0.03), 
+                                     geometry.MeshLambertMaterial(color=0x00ffff))
     vis["quad"]["body"].set_object(geometry.Box([0.2, 0.1, 0.1]),
                                    geometry.MeshLambertMaterial(color=0x404040))
     vis["quad"]["prop0"].set_object(geometry.Cylinder(0.01, d_prop), 

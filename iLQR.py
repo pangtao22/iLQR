@@ -15,7 +15,7 @@ class WayPoint:
         assert t>=0
         assert rho > 0
         self.x = x
-        self.t = t
+        self.t = t # t should be the absolute simulation time. 
         self.W = W
         self.rho = rho
     
@@ -41,6 +41,7 @@ class DiscreteTimeIterativeLQR:
         self.traj_specs = None # to be initialized in CalcTrajectory method.
         
     def PlotCosts(self, x, u, xd, ud, Q, R, QN, xw_list, h):
+        t0 = 0
         N = u.shape[0]
         t = np.array([i*h for i in range(N)])
         fig_plot_costs = plt.figure(figsize=(6,12), dpi = 100)
@@ -67,14 +68,14 @@ class DiscreteTimeIterativeLQR:
             l_wpt = np.zeros(N)
         for i in range(N):
             dx = x[i] - xw.x
-            l_wpt[i] = dx.dot(xw.W.dot(dx))*self.discount(xw, i)
+            l_wpt[i] = dx.dot(xw.W.dot(dx))*self.discount(xw, i, t0)
             ax_x_wpt.plot(t, l_wpt, color='b')
             # Make the y-axis label, ticks and tick labels match the line color.
             ax_x_wpt.set_ylabel('x_waypoint_cost', color='b')
             ax_x_wpt.tick_params('y', colors='b')
         
         ax_x_wpt2 = ax_x_wpt.twinx()
-        discount_values = [self.discount(xw, i) for i in range(N)]
+        discount_values = [self.discount(xw, i, t0) for i in range(N)]
         ax_x_wpt2.plot(t, discount_values, 'r')
         ax_x_wpt2.set_ylabel('discount', color='r')
         ax_x_wpt2.tick_params('y', colors='r')
@@ -82,8 +83,8 @@ class DiscreteTimeIterativeLQR:
         plt.show()
 
     # xw is a WayPoint
-    def discount(self, xw, i):
-        t = i * self.traj_specs.h
+    def discount(self, xw, i, t0):
+        t = i * self.traj_specs.h + t0
         return np.sqrt(0.5*xw.rho/np.pi)*np.exp(-0.5*xw.rho*(t-xw.t)**2)
   
     def CalcLqrCost(self, x, u, i0):
@@ -100,7 +101,7 @@ class DiscreteTimeIterativeLQR:
         J += dx_N.dot(self.traj_specs.QN.dot(dx_N))
         return J
 
-    def CalcWayPointsCost(self, x, i0):
+    def CalcWayPointsCost(self, x, i0, t0):
         if self.traj_specs.xw_list is None:
             return 0.
 
@@ -111,19 +112,19 @@ class DiscreteTimeIterativeLQR:
         for i in range(i0, N):
             for xw in self.traj_specs.xw_list:
                 dx = x[i] - xw.x
-                W += dx.dot(xw.W.dot(dx))*self.discount(xw, i)
+                W += dx.dot(xw.W.dot(dx))*self.discount(xw, i, t0)
         return W
   
     '''
     Calculates the cost-to-go J of a paricular trajectory (x[.], u[.])
     starting at time i0.
     '''  
-    def CalcJ(self, x, u, i0=0):
+    def CalcJ(self, x, u, t0, i0=0):
         assert(x.shape == (self.traj_specs.N+1, self.n))
         assert(u.shape == (self.traj_specs.N, self.m))
         J = 0
         J += self.CalcLqrCost(x, u, i0)
-        J += self.CalcWayPointsCost(x, i0)
+        J += self.CalcWayPointsCost(x, i0, t0)
         return J
   
     # h: time step of iLQR
@@ -133,7 +134,7 @@ class DiscreteTimeIterativeLQR:
     # l(x,u) = 1/2*((x-xd)'*Q*(x-xd) + u'*R*u)
     # xw: list of WayPoints
     # terminal cost = 1/2*(x-xd)'*QN*(x-xd)
-    def CalcTrajectory(self, traj_specs, is_logging_trajectories = True):
+    def CalcTrajectory(self, traj_specs, t0 = 0., is_logging_trajectories = True):
         assert(traj_specs.xd.shape == (self.n,))
         assert(traj_specs.ud.shape == (self.m,))
 
@@ -151,20 +152,20 @@ class DiscreteTimeIterativeLQR:
         self.traj_specs = traj_specs
         
         # calculates lx
-        def CalcLx(xi, i):
+        def CalcLx(xi, i, t0):
             Lx = traj_specs.Q.dot(xi - traj_specs.xd)
             # add contribution from waypoint weights
             if not(traj_specs.xw_list is None):
                 for xw in traj_specs.xw_list:
-                    Lx += xw.W.dot(xi - xw.x)*self.discount(xw, i)
+                    Lx += xw.W.dot(xi - xw.x)*self.discount(xw, i, t0)
             return Lx
             
         # calculates lxx
-        def CalcLxx(i):
+        def CalcLxx(i, t0):
             Lxx = traj_specs.Q.copy()
             if not(traj_specs.xw_list is None):
                 for xw in traj_specs.xw_list:
-                    Lxx += xw.W*self.discount(xw,i)
+                    Lxx += xw.W*self.discount(xw,i, t0)
             return Lxx
     
         # allocate storage for derivatives
@@ -192,26 +193,28 @@ class DiscreteTimeIterativeLQR:
         initialize first trajectory by 
         simulating forward with LQR controller about x0.
         '''
-#        K0, P0 = CallLQR(traj_specs.x0, traj_specs.u0, traj_specs.Q, traj_specs.R)
-#        for i in range(traj_specs.N):
-#            u[i] = -K0.dot(x[i]-traj_specs.x0) + traj_specs.u0
-#            x_u = np.hstack((x[i], u[i]))
-#            x[i+1] = x[i] + traj_specs.h*self.CalcF(x_u)
+        x0 = np.zeros(self.n)
+        x0[0:3] = traj_specs.x0[0:3]
+        K0, P0 = CallLQR(x0, traj_specs.u0, traj_specs.Q, traj_specs.R)
+        for i in range(traj_specs.N):
+            u[i] = -K0.dot(x[i]-traj_specs.x0) + traj_specs.u0
+            x_u = np.hstack((x[i], u[i]))
+            x[i+1] = x[i] + traj_specs.h*self.CalcF(x_u)
         
         '''
         initialize first trajectory by 
         simulating forward with LQR controller about xd.
         '''
-        Kd, Qd = CallLQR(traj_specs.xd, traj_specs.ud, traj_specs.Q, traj_specs.R)
-        for i in range(traj_specs.N):
-            u[i] = -Kd.dot(x[i]-traj_specs.xd) + traj_specs.ud
-            x_u = np.hstack((x[i], u[i]))
-            x[i+1] = x[i] + traj_specs.h*self.CalcF(x_u)
+#        Kd, Qd = CallLQR(traj_specs.xd, traj_specs.ud, traj_specs.Q, traj_specs.R)
+#        for i in range(traj_specs.N):
+#            u[i] = -Kd.dot(x[i]-traj_specs.xd) + traj_specs.ud
+#            x_u = np.hstack((x[i], u[i]))
+#            x[i+1] = x[i] + traj_specs.h*self.CalcF(x_u)
         
         # logging
         max_iterations = 5 # number of maximum iterations (forward + backward passes)
         J = np.zeros(max_iterations+1)
-        J[0] = self.CalcJ(x, u)
+        J[0] = self.CalcJ(x, u, t0)
         print "initial cost: ", J[0]
         
         if is_logging_trajectories:
@@ -233,9 +236,9 @@ class DiscreteTimeIterativeLQR:
            
             # backward pass
             for i in range(traj_specs.N-1, -1, -1): # i = N-1, ....
-                lx = CalcLx(x[i], i)
+                lx = CalcLx(x[i], i, t0)
                 lu = traj_specs.R.dot(u[i] - traj_specs.ud)
-                lxx = CalcLxx(i)
+                lxx = CalcLxx(i, t0)
                 luu = traj_specs.R
                 x_u = np.hstack((x[i], u[i]))
                 f_x_u = jacobian(self.CalcF, x_u)
@@ -272,7 +275,7 @@ class DiscreteTimeIterativeLQR:
                     x_u = np.hstack((x_next[t], u_next[t]))
                     x_next[t+1] = x_next[t] + traj_specs.h*self.CalcF(x_u)
                 
-                J_new = self.CalcJ(x_next, u_next, 0)
+                J_new = self.CalcJ(x_next, u_next, t0=t0, i0=0)
         
                 if J_new <=  J[j]:
                     J[j+1] = J_new

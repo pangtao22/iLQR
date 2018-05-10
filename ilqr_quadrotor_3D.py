@@ -33,20 +33,19 @@ W1 = np.zeros(n)
 W1_vec = np.zeros(n)
 W1_vec[0:2] = 1
 W1_vec[2] = 0.1
-W1 = 10*np.diag(W1_vec)
+W1 = 50*np.diag(W1_vec)
 rho1 = 5
 xw = WayPoint(x1, t1, W1, rho1)
 
 traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, xw_list=[xw])
 
 if __name__ == "__main__":
-    Ni = 4
-    x, u, J, QN, Vx, Vxx, k, K = planner.CalcTrajectory(traj_specs, Ni)
+    x, u, J, QN, Vx, Vxx, k, K = planner.CalcTrajectory(traj_specs)
     
     PlotTraj(x, h, [xw])
-    #%% open meshcat
-    vis = meshcat.Visualizer()
-    vis.open
-
-    #%% Meshcat animation
-    PlotTrajectoryMeshcat(x[-1], vis, h)
+#    #%% open meshcat
+#    vis = meshcat.Visualizer()
+#    vis.open
+#
+#    #%% Meshcat animation
+#    PlotTrajectoryMeshcat(x[-1], vis, h)
