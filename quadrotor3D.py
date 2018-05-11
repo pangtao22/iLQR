@@ -126,7 +126,7 @@ def CalcPhiD(rpy):
     cp = cos(pitch)
     cp2 = cp**2
     tp = sp/cp
-
+    
     Phi_D = np.empty((3,3,3), dtype=object)
     Phi_D[:,0,:] = 0.0
     Phi_D[0, 1] = [cr * tp, sr / cp2, 0]
