@@ -3,6 +3,11 @@ from pydrake.all import LinearQuadraticRegulator
 import numpy as np
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
+# julia
+#import julia
+#julia.Julia().include('quadrotor_dynamics.jl')
+#from julia import QuadrotorDynamics as QD
+
 # Notations in this code follow "Synthesis and stabilization of complex 
 # behaviors th
     
@@ -139,6 +144,7 @@ class DiscreteTimeIterativeLQR:
         assert(traj_specs.ud.shape == (self.m,))
 
         def CallLQR(x, u, Q, R):
+#            f_x_u = QD.CalcPartials(np.hstack((x, u)))
             f_x_u = jacobian(self.CalcF, np.hstack((x, u)))
             A = f_x_u[:, 0:self.n] 
             B = f_x_u[:, self.n:self.n+self.m]
@@ -241,6 +247,7 @@ class DiscreteTimeIterativeLQR:
                 lxx = CalcLxx(i, t0)
                 luu = traj_specs.R
                 x_u = np.hstack((x[i], u[i]))
+#                f_x_u = QD.CalcPartials(x_u)
                 f_x_u = jacobian(self.CalcF, x_u)
                 fx = traj_specs.h*f_x_u[:, 0:self.n] + np.eye(self.n)
                 fu = traj_specs.h*f_x_u[:, self.n:self.n+self.m]
