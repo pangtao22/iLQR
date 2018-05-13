@@ -1,4 +1,4 @@
-from pydrake.forwarddiff import jacobian
+import pydrake.examples.quadrotor as qd
 from pydrake.all import LinearQuadraticRegulator
 import numpy as np
 from numpy import linalg as LA
@@ -134,12 +134,14 @@ class DiscreteTimeIterativeLQR:
     # l(x,u) = 1/2*((x-xd)'*Q*(x-xd) + u'*R*u)
     # xw: list of WayPoints
     # terminal cost = 1/2*(x-xd)'*QN*(x-xd)
-    def CalcTrajectory(self, traj_specs, t0 = 0., is_logging_trajectories = True):
+    def CalcTrajectory(self, traj_specs, t0 = 0., is_logging_trajectories = True, is_printing = False):
         assert(traj_specs.xd.shape == (self.n,))
         assert(traj_specs.ud.shape == (self.m,))
 
         def CallLQR(x, u, Q, R):
-            f_x_u = jacobian(self.CalcF, np.hstack((x, u)))
+            f_x_u = np.zeros((self.n, self.n + self.m))
+            x_u = np.hstack((x, u))
+            qd.CalcJacobian(x_u, f_x_u)
             A = f_x_u[:, 0:self.n] 
             B = f_x_u[:, self.n:self.n+self.m]
             K, P = LinearQuadraticRegulator(A, B, Q, R)
@@ -211,11 +213,12 @@ class DiscreteTimeIterativeLQR:
 #            x_u = np.hstack((x[i], u[i]))
 #            x[i+1] = x[i] + traj_specs.h*self.CalcF(x_u)
         
-        # logging
         max_iterations = 5 # number of maximum iterations (forward + backward passes)
+        f_x_u = np.zeros((self.n, self.n + self.m))
         J = np.zeros(max_iterations+1)
         J[0] = self.CalcJ(x, u, t0)
-        print "initial cost: ", J[0]
+        if is_printing:
+            print "initial cost: ", J[0]
         
         if is_logging_trajectories:
             x_log = x.copy()
@@ -241,7 +244,7 @@ class DiscreteTimeIterativeLQR:
                 lxx = CalcLxx(i, t0)
                 luu = traj_specs.R
                 x_u = np.hstack((x[i], u[i]))
-                f_x_u = jacobian(self.CalcF, x_u)
+                qd.CalcJacobian(x_u, f_x_u)
                 fx = traj_specs.h*f_x_u[:, 0:self.n] + np.eye(self.n)
                 fu = traj_specs.h*f_x_u[:, self.n:self.n+self.m]
                 
@@ -291,8 +294,9 @@ class DiscreteTimeIterativeLQR:
             if is_logging_trajectories:
                 x_log = np.append(x_log, x.reshape(1, x.shape[0], x.shape[1]), axis=0)
                 u_log = np.append(u_log, u.reshape(1, u.shape[0], u.shape[1]), axis=0)
-                
-            print "Iteration ", j, ", line search steps: ", line_search_count, ", J: ", J[j+1]   
+                if is_printing:
+                    print "Iteration ", j, ", line search steps: ", \
+                        line_search_count, ", J: ", J[j+1]   
             cost_reduction = (J[j] - J[j+1])/J[j]
             j += 1
             if j >= max_iterations or cost_reduction < 0.01 or line_search_count > 5:

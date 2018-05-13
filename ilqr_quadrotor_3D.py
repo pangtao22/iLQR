@@ -15,8 +15,9 @@ u0[:] = mass * g / 4
 
 # desired fixed point
 xd = np.zeros(n)
-xd[0:2] = [2,1]
-ud = u0
+xd[0:3] = [3.,0, 0]
+ud = np.zeros(m)
+ud[:] = u0
 
 # costs
 QN = 100*np.diag([10,10,10,1,1,1,  0.1,0.1,0.1,0.1,0.1,0.1])
@@ -27,13 +28,15 @@ R = np.eye(m) # lqr cost
 
 # waypoints
 x1 = np.zeros(n)
-x1[0:2] = [1,0.2]
-t1 = h*N*0.3
+x1[0:3] = [1, 0, 0.5]
+x1[3] = np.pi/3;
+t1 = 1.0
 W1 = np.zeros(n)
 W1_vec = np.zeros(n)
 W1_vec[0:2] = 1
-W1_vec[2] = 0.1
-W1 = 50*np.diag(W1_vec)
+W1_vec[2] = 1
+W1_vec[3] = 0.5
+W1 = 10*np.diag(W1_vec)
 rho1 = 5
 xw = WayPoint(x1, t1, W1, rho1)
 

@@ -4,6 +4,7 @@ from numpy import linalg as LA
 from pydrake.forwarddiff import jacobian
 from pydrake.all import LinearQuadraticRegulator
 from pydrake.systems.framework import VectorSystem
+import pydrake.examples.quadrotor as qd
 import matplotlib.pyplot as plt
 # for meshcat
 import time
@@ -204,10 +205,11 @@ def PlotTrajectoryMeshcat(x, t, vis, wpts_list = None):
 
 # define dynamics in a separate function, so that it can be passed to
 # ForwardDiff.jacobian for derivatives.
-def CalcF(x_u):
+CalcF = qd.CalcFd
+def CalcF_Py(x_u):
     x = x_u[0:n]
     u = x_u[n:n+m]
-    xdot = np.empty(x.shape, dtype=object)
+    xdot = x.copy()
 
     I_inv = LA.inv(I)
     uF = kF * u
@@ -245,6 +247,7 @@ def CalcF(x_u):
     xdot[9:12] = rpy_dd
     return xdot
     
+
 def PlotTraj(x, dt = None, xw_list = None, t = None):
     x = x.copy() # removes reference to input variable.
     # add one dimension to x if x is 2D. 
@@ -315,15 +318,10 @@ class Quadrotor(VectorSystem):
         self._DeclareContinuousState(n)
 #        self._DeclarePeriodicPublish(0.005)
 
-    # define dynamics in a separate function, so that it can be passed to
-    # ForwardDiff.jacobian for derivatives.
-    def f(self, x_u):
-        return CalcF(x_u)
-
     # xdot(t) = -x(t) + x^3(t)
     def _DoCalcVectorTimeDerivatives(self, context, u, x, xdot):
         x_u = np.hstack((x.flatten(), u.flatten()))
-        xdot[:] = self.f(x_u)
+        qd.CalcFd_Ref(x_u, xdot)
 
     # y(t) = x(t)
     def _DoCalcVectorOutput(self, context, u, x, y):

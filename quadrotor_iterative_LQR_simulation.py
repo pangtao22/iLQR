@@ -38,7 +38,6 @@ class QuadLqrController(LeafSystem):
         print 'K*x_error:', K[i].dot(x-x_nominal[i])
         return u_nominal[i] + K[i].dot(x-x_nominal[i])
 
-
     def _DoCalcDiscreteVariableUpdates(self, context, events, discrete_state):
         # Call base method to ensure we do not get recursion.
         LeafSystem._DoCalcDiscreteVariableUpdates(self, context, events, discrete_state)
