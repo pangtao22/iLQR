@@ -28,15 +28,16 @@ R = np.eye(m) # lqr cost
 
 # waypoints
 x1 = np.zeros(n)
-x1[0:3] = [1, 0, 0.5]
-x1[3] = np.pi/3;
-t1 = 1.0
+x1[0:3] = [1, 0, 0.2]
+x1[3] = np.pi/4;
+t1 = 0.8
 W1 = np.zeros(n)
 W1_vec = np.zeros(n)
-W1_vec[0:2] = 1
+W1_vec[0] = 1
+W1_vec[1] = 0
 W1_vec[2] = 1
-W1_vec[3] = 0.5
-W1 = 10*np.diag(W1_vec)
+W1_vec[3] = 20
+W1 = np.diag(W1_vec)
 rho1 = 5
 xw = WayPoint(x1, t1, W1, rho1)
 
