@@ -238,7 +238,7 @@ class DiscreteTimeIterativeLQR:
             Vx[traj_specs.N] = traj_specs.QN.dot(x[traj_specs.N] - traj_specs.xd)    
            
             # backward pass
-            for i in range(traj_specs.N-1, -1, -1): # i = N-1, ....
+            for i in range(traj_specs.N-1, -1, -1): # i = N-1, .... 0
                 lx = CalcLx(x[i], i, t0)
                 lu = traj_specs.R.dot(u[i] - traj_specs.ud)
                 lxx = CalcLxx(i, t0)

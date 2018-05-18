@@ -19,7 +19,7 @@ u0[:] = mass * g / 4
 
 # desired fixed point
 xd = np.zeros(n)
-xd[0:3] = [3.0, -0.6, 0]
+xd[0:3] = [3.,-1, 1]
 ud = np.zeros(m)
 ud[:] = u0
 
@@ -32,7 +32,7 @@ R = np.eye(m) # lqr cost
 
 # waypoints
 x1 = np.zeros(n)
-x1[0:3] = [1, -0.2, 0.2]
+x1[0:3] = [1, -0.3, 0.5]
 x1[3] = np.pi/6;
 t1 = 1.0
 W1 = np.zeros(n)
@@ -41,8 +41,10 @@ W1_vec[0] = 0.1
 W1_vec[1] = 0.1
 W1_vec[2] = 0.1
 W1_vec[3] = 10
-W1 = 5*np.diag(W1_vec)
+W1 = np.diag(W1_vec)
 rho1 = 5
+xw = WayPoint(x1, t1, W1, rho1)
+
 xw = WayPoint(x1, t1, W1, rho1)
 
 traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, xw_list=[xw])
@@ -111,7 +113,7 @@ input_vector.SetFromVector(traj_specs.u0)
 simulator.StepTo(h*350)
 
 #%% plot
-PlotTraj(logger_x.data().T, dt=None, xw_list=traj_specs.xw_list, t=logger_x.sample_times())
+PlotTraj(logger_x.data().T, dt=None, xw_list=[xw], t=logger_x.sample_times())
     
 #%% open meshcat 
 vis = meshcat.Visualizer()

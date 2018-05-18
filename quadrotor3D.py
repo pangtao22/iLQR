@@ -139,13 +139,42 @@ def CalcPhiD(rpy):
 
     return Phi_D
 
-
-# t is a 1D numpy array of time. The quadrotor has state x[i] at time t[i].
-# wpts has shape (N, 3), where wpts[i] is the Cartesian coordinate of waypoint i. 
-def PlotTrajectoryMeshcat(x, t, vis, wpts_list = None):
-    # initialize
-    vis.delete()
-    
+# n: number of meshcat quad instances to create.
+def CreateQuads(vis, n=1):
+    d_prop = 0.10 # propeller diameter
+    for i in range(n):
+        name = "quad%d"%i
+        vis[name]["CG"].set_object(geometry.Sphere(0.03), 
+                                         geometry.MeshLambertMaterial(color=0x00ffff))
+        vis[name]["body"].set_object(geometry.Box([0.2, 0.1, 0.1]),
+                                       geometry.MeshLambertMaterial(color=0x404040))
+        vis[name]["prop0"].set_object(geometry.Cylinder(0.01, d_prop), 
+                                        geometry.MeshLambertMaterial(color=0x00ff00))
+        vis[name]["prop1"].set_object(geometry.Cylinder(0.01, d_prop),
+                                        geometry.MeshLambertMaterial(color=0xff0000))
+        vis[name]["prop2"].set_object(geometry.Cylinder(0.01, d_prop),
+                                        geometry.MeshLambertMaterial(color=0xffffff))
+        vis[name]["prop3"].set_object(geometry.Cylinder(0.01, d_prop), 
+                                        geometry.MeshLambertMaterial(color=0xffffff))
+        
+        Rx_prop = CalcRx(np.pi/2)
+        TB = tf.translation_matrix([0,0,-0.05])
+        T0 = tf.translation_matrix([l, -l, 0])
+        T1 = tf.translation_matrix([l, l, 0])
+        T2 = tf.translation_matrix([-l, l, 0])
+        T3 = tf.translation_matrix([-l, -l, 0])
+        T0[0:3,0:3] = Rx_prop
+        T1[0:3,0:3] = Rx_prop
+        T2[0:3,0:3] = Rx_prop
+        T3[0:3,0:3] = Rx_prop
+        
+        vis[name]["body"].set_transform(TB)
+        vis[name]["prop0"].set_transform(T0)
+        vis[name]["prop1"].set_transform(T1)
+        vis[name]["prop2"].set_transform(T2)
+        vis[name]["prop3"].set_transform(T3)
+        
+def PlotWayPts(vis, wpts_list):
     # plot waypoints
     if not(wpts_list is None):
         for i, wpts in enumerate(wpts_list):
@@ -153,38 +182,34 @@ def PlotTrajectoryMeshcat(x, t, vis, wpts_list = None):
                                          geometry.MeshLambertMaterial(color=0xffff00))
             T_wp = tf.translation_matrix(wpts)
             vis["wpt_%d" % i].set_transform(T_wp)
+     
+# n: number of snap shots
+def PlotTrajTimeLapse(x, n, vis, wpts_list = None):
+    vis.delete()
+    CreateQuads(vis, n)
+    PlotWayPts(vis, wpts_list)
+    N = int(len(x)/n)
+    idx = [N*i for i in range(n)]
+    idx.append(len(x) - 1)
     
+    for i, idx_i in enumerate(idx):
+        xi = x[idx_i]
+        xyz = xi[0:3]
+        rpy = xi[3:6]
+        R_WB = CalcR_WB(rpy)
+        T = tf.translation_matrix(xyz)
+        T[0:3,0:3] = R_WB
+        vis["quad%d"%i].set_transform(T)
     
-    d_prop = 0.10 # propeller diameter
-    vis["quad"]["CG"].set_object(geometry.Sphere(0.03), 
-                                     geometry.MeshLambertMaterial(color=0x00ffff))
-    vis["quad"]["body"].set_object(geometry.Box([0.2, 0.1, 0.1]),
-                                   geometry.MeshLambertMaterial(color=0x404040))
-    vis["quad"]["prop0"].set_object(geometry.Cylinder(0.01, d_prop), 
-                                    geometry.MeshLambertMaterial(color=0x00ff00))
-    vis["quad"]["prop1"].set_object(geometry.Cylinder(0.01, d_prop),
-                                    geometry.MeshLambertMaterial(color=0xff0000))
-    vis["quad"]["prop2"].set_object(geometry.Cylinder(0.01, d_prop),
-                                    geometry.MeshLambertMaterial(color=0xffffff))
-    vis["quad"]["prop3"].set_object(geometry.Cylinder(0.01, d_prop), 
-                                    geometry.MeshLambertMaterial(color=0xffffff))
-    
-    Rx_prop = CalcRx(np.pi/2)
-    TB = tf.translation_matrix([0,0,-0.05])
-    T0 = tf.translation_matrix([l, -l, 0])
-    T1 = tf.translation_matrix([l, l, 0])
-    T2 = tf.translation_matrix([-l, l, 0])
-    T3 = tf.translation_matrix([-l, -l, 0])
-    T0[0:3,0:3] = Rx_prop
-    T1[0:3,0:3] = Rx_prop
-    T2[0:3,0:3] = Rx_prop
-    T3[0:3,0:3] = Rx_prop
-    
-    vis["quad"]["body"].set_transform(TB)
-    vis["quad"]["prop0"].set_transform(T0)
-    vis["quad"]["prop1"].set_transform(T1)
-    vis["quad"]["prop2"].set_transform(T2)
-    vis["quad"]["prop3"].set_transform(T3)
+            
+            
+# t is a 1D numpy array of time. The quadrotor has state x[i] at time t[i].
+# wpts has shape (N, 3), where wpts[i] is the Cartesian coordinate of waypoint i. 
+def PlotTrajectoryMeshcat(x, t, vis, wpts_list = None):
+    # initialize
+    vis.delete()
+    CreateQuads(vis)
+    PlotWayPts(vis, wpts_list)
     
     # visualize trajectory
     time.sleep(1.0)
@@ -198,7 +223,7 @@ def PlotTrajectoryMeshcat(x, t, vis, wpts_list = None):
         R_WB = CalcR_WB(rpy)
         T = tf.translation_matrix(xyz)
         T[0:3,0:3] = R_WB
-        vis["quad"].set_transform(T)
+        vis["quad0"].set_transform(T)
         if i < N-1  and not(t is None):
             dt = t[i+1] - t[i]
         time.sleep(dt)
@@ -259,33 +284,36 @@ def PlotTraj(x, dt = None, xw_list = None, t = None):
         t = dt*np.arange(N+1)
     Ni = x.shape[0]
 
-    fig = plt.figure(figsize=(15,12), dpi = 100)
+    fig = plt.figure(figsize=(9,6), dpi = 150)
 
     ax_x = fig.add_subplot(321)
-    ax_x.set_ylabel("x")
+    ax_x.set_ylabel("x (m)")
+    ax_x.set_xlabel("t (s)")
     ax_x.axhline(color='r', ls='--')
 
     ax_y = fig.add_subplot(322)
-    ax_y.set_ylabel("y")
+    ax_y.set_ylabel("y (m)")
+    ax_y.set_xlabel("t (s)")
     ax_y.axhline(color='r', ls='--')
 
     ax_z = fig.add_subplot(323)
-    ax_z.set_ylabel("z")
+    ax_z.set_ylabel("z (m)")
+    ax_z.set_xlabel("t (s)")
     ax_z.axhline(color='r', ls='--')
 
     ax_roll = fig.add_subplot(324)
     ax_roll.set_ylabel("roll(phi)")
-    ax_roll.set_xlabel("t")
+    ax_roll.set_xlabel("t (s)")
     ax_roll.axhline(color='r', ls='--')
 
     ax_pitch = fig.add_subplot(325)
     ax_pitch.set_ylabel("pitch(theta)")
-    ax_pitch.set_xlabel("t")
+    ax_pitch.set_xlabel("t (s)")
     ax_pitch.axhline(color='r', ls='--')
 
     ax_yaw = fig.add_subplot(326)
     ax_yaw.set_ylabel("yaw(psi)")
-    ax_yaw.set_xlabel("t")
+    ax_yaw.set_xlabel("t (s)")
     ax_yaw.axhline(color='r', ls='--')    
     
     for j in range(Ni):
