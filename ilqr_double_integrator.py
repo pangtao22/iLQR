@@ -23,7 +23,7 @@ def CalcF(x_u):
 planner= DiscreteTimeIterativeLQR(CalcF, n, m)
 #%% iLQR
 h = 0.01 # time step.
-N = 600 # horizon
+N = 300 # horizon
 x0 = np.array([0.,0,])
 u0 = np.array([0.])
 
@@ -32,47 +32,55 @@ xd = np.array([1.,0])
 ud = np.array([0.])
 
 # cost weights
-QN = np.diag([100,0.1])
+QN = 100*np.diag([1,0.1])
 Q = np.diag([0.1, 0.1])# lqr cost
 R = 0.1*np.eye(m) # lqr cost
-W1 = np.diag([1.0, 0])
+W1 = 10*np.diag([1.0, 1.0])
 
 # waypoints
-x1 = np.array([0.3, 0.0])
-t1 = h*N*0.5
-rho1 = 10
+x1 = np.array([0.3, 0.2])
+t1 = h*N*0.4
+rho1 = 100
 xw = WayPoint(x1, t1, W1, rho1)
 
-traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN)
-traj_specs2 = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, [xw])
+traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, [xw])
+traj_specs2 = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN)
 x, u, J, QN, Vx, Vxx, k, K = planner.CalcTrajectory(traj_specs)
-
+x2, u2, J2, QN2, Vx2, Vxx2, k2, K2 = planner.CalcTrajectory(traj_specs2)
     
-#%% plot
+#%% plot trajectory with and without waypoint
 i_x = -1 # which iteration to plot
 
 t = np.array([i*h for i in range(N+1)])
-fig = plt.figure(figsize=(6,16), dpi = 100)
-ax_x = fig.add_subplot(411)
+fig = plt.figure(figsize=(4,6), dpi = 200)
+ax_x = fig.add_subplot(311)
 ax_x.set_ylabel("x")
-ax_xdot = fig.add_subplot(412)
+ax_xdot = fig.add_subplot(312)
 ax_xdot.set_ylabel("xdot")
-ax_u = fig.add_subplot(413)
+ax_u = fig.add_subplot(313)
 ax_u.set_ylabel("u")
 ax_u.set_xlabel("t")
 # reference lines at 0
-ax_x.axhline(color='r', ls='--')
-ax_xdot.axhline(color='r', ls='--')
+ax_x.axhline(xd[0], color='r', ls='--')
+ax_xdot.axhline(xd[1], color='r', ls='--')
 ax_u.axhline(color='r', ls='--')
 
 ax_x.plot(xw.t, xw.x[0], 'r*')
-Ni = len(x)
-for i in range(Ni):
-  ax_x.plot(t, x[i,:,0])
-  ax_xdot.plot(t, x[i,:,1])
-  ax_u.plot(t[0:-1], u[i,:,0])
-    
-plt.show()
+ax_xdot.plot(xw.t, xw.x[1], 'r*')
+
+
+ax_x.plot(t, x[i_x,:,0], label = 'w/ way point')
+ax_x.plot(t, x2[i_x,:,0], label = 'w/o way point')
+ax_x.legend()
+
+ax_xdot.plot(t, x[i_x,:,1], label = 'w/ way point')
+ax_xdot.plot(t, x2[i_x,:,1], label = 'w/o way point')
+ax_xdot.legend()
+
+ax_u.plot(t[0:-1], u[i_x,:,0], label = 'w/ way point')
+ax_u.plot(t[0:-1], u2[i_x,:,0], label = 'w/o way point')
+plt.tight_layout()
+ax_u.legend()
 
 planner.PlotCosts(x[i_x], u[i_x], xd, ud, Q, R, QN, [xw], h)    
 
@@ -96,20 +104,21 @@ ax_eigen.plot(t, eigval_V[:,0])
 ax_eigen.plot(t, eigval_V[:,1])
 ax_eigen.set_xlabel('time (s)')
 ax_eigen.set_ylabel('eigenvalues of Vxx')
+plt.tight_layout()
 plt.show()
 
 #%% 3D plot of different costs
-i_x = 0
-planner.traj_specs = traj_specs2
+i_x = -1
+planner.traj_specs = traj_specs
 J_traj = np.zeros(N+1)
 J_lqr_traj = np.zeros(N+1)
 J_wpt_traj = np.zeros(N+1)
 discount_traj = np.zeros(N+1)
 for i in range(N+1):
   J_lqr_traj[i] = planner.CalcLqrCost(x[i_x], u[i_x], i)
-  J_wpt_traj[i] = planner.CalcWayPointsCost(x[i_x], i)
-  J_traj[i] = planner.CalcJ(x[i_x], u[i_x], i)
-  discount_traj[i] = planner.discount(planner.traj_specs.xw_list[0], i)
+  J_wpt_traj[i] = planner.CalcWayPointsCost(x[i_x], i, 0)
+  J_traj[i] = planner.CalcJ(x[i_x], u[i_x], 0, i)
+  discount_traj[i] = planner.discount(planner.traj_specs.xw_list[0], i, 0)
       
 fig = plt.figure(figsize = (6,6), dpi = 200)
 ax_J = fig.add_subplot(111, projection = '3d')
@@ -119,18 +128,19 @@ ax_J.set_ylabel('xdot')
 l1, = ax_J.plot(x[i_x,:,0], x[i_x,:,1], J_traj, label = 'J_total')
 l2, = ax_J.plot(x[i_x,:,0], x[i_x,:,1], J_lqr_traj, label = 'J_lqr')
 l3, = ax_J.plot(x[i_x,:,0], x[i_x,:,1], J_wpt_traj, label = 'J_wpt')
-l4, = ax_J.plot(x[i_x,:,0], x[i_x,:,1],  label = 'phase trajectory')
+l4, = ax_J.plot(x[i_x,:,0], x[i_x,:,1], '--', label = 'phase trajectory')
 
-scale = max(J_wpt_traj)/max(discount_traj)
-l5, = ax_J.plot(x[i_x,:,0], x[i_x,:,1], scale*discount_traj, label = 'discount_value')
-wpt = planner.traj_specs.xw_list[0]
-ax_J.plot([wpt.x[0], wpt.x[0]], [0,0.5], 'r--')
+#scale = max(J_wpt_traj)/max(discount_traj)
+#l5, = ax_J.plot(x[i_x,:,0], x[i_x,:,1], scale*discount_traj, label = 'discount_value')
+#wpt = planner.traj_specs.xw_list[0]
+#ax_J.plot([wpt.x[0], wpt.x[0]], [0,0.5], 'r--')
 
-idx_wpt = int(wpt.t/planner.traj_specs.h)
-ax_J.plot([x[i_x,idx_wpt,0]], [x[i_x,idx_wpt,1]], 'ro')
-idx = range(0, N+1,  5)
-#ax_J.quiver(x[i_x,idx,0], x[i_x,idx,1], 0, 0.01*-Vx[idx,0], 0.01*-Vx[idx,1], 0)
-plt.legend(handles = [l1, l2, l3, l4, l5])
+#idx_wpt = int(wpt.t/planner.traj_specs.h)
+#ax_J.plot([x[i_x,idx_wpt,0]], [x[i_x,idx_wpt,1]], 'ro')
+#idx = range(0, N+1,  5)
+ax_J.plot([xw.x[0]], [xw.x[1]], [0], 'ro')
+
+plt.legend()
 
 plt.tight_layout()
 plt.show()

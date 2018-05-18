@@ -51,6 +51,7 @@ class DiscreteTimeIterativeLQR:
         ax_u_lqr = fig_plot_costs.add_subplot(313)
         ax_u_lqr.set_ylabel('u_lqr_cost')
         ax_u_lqr.set_xlabel('time(s)')
+        ax_x_wpt2 = ax_x_wpt.twinx()
         
         # only plots the cost of the first waypoint.
         l_lqr_x = np.zeros(N)
@@ -61,7 +62,7 @@ class DiscreteTimeIterativeLQR:
             l_lqr_u[i] = (u[i]-ud).dot(R.dot(u[i]-ud)) 
         
         ax_x_lqr.plot(t, l_lqr_x)
-        ax_x_lqr.axhline(final_cost, final_cost, color='r', ls='--')
+        ax_x_lqr.axhline(final_cost, color='r', ls='--')
         ax_u_lqr.plot(t, l_lqr_u)
         if not(xw_list is None):
             xw = xw_list[0]
@@ -74,7 +75,7 @@ class DiscreteTimeIterativeLQR:
             ax_x_wpt.set_ylabel('x_waypoint_cost', color='b')
             ax_x_wpt.tick_params('y', colors='b')
         
-        ax_x_wpt2 = ax_x_wpt.twinx()
+        
         discount_values = [self.discount(xw, i, t0) for i in range(N)]
         ax_x_wpt2.plot(t, discount_values, 'r')
         ax_x_wpt2.set_ylabel('discount', color='r')
