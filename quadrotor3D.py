@@ -273,7 +273,7 @@ def CalcF_Py(x_u):
     return xdot
     
 
-def PlotTraj(x, dt = None, xw_list = None, t = None):
+def PlotTraj(x, xd, dt = None, xw_list = None, t = None):
     x = x.copy() # removes reference to input variable.
     # add one dimension to x if x is 2D. 
     if len(x.shape) == 2:
@@ -289,32 +289,32 @@ def PlotTraj(x, dt = None, xw_list = None, t = None):
     ax_x = fig.add_subplot(321)
     ax_x.set_ylabel("x (m)")
     ax_x.set_xlabel("t (s)")
-    ax_x.axhline(color='r', ls='--')
+    ax_x.axhline(xd[0], color='r', ls='--')
 
     ax_y = fig.add_subplot(322)
     ax_y.set_ylabel("y (m)")
     ax_y.set_xlabel("t (s)")
-    ax_y.axhline(color='r', ls='--')
+    ax_y.axhline(xd[1], color='r', ls='--')
 
     ax_z = fig.add_subplot(323)
     ax_z.set_ylabel("z (m)")
     ax_z.set_xlabel("t (s)")
-    ax_z.axhline(color='r', ls='--')
+    ax_z.axhline(xd[2], color='r', ls='--')
 
     ax_roll = fig.add_subplot(324)
     ax_roll.set_ylabel("roll(phi)")
     ax_roll.set_xlabel("t (s)")
-    ax_roll.axhline(color='r', ls='--')
+    ax_roll.axhline(xd[3], color='r', ls='--')
 
     ax_pitch = fig.add_subplot(325)
     ax_pitch.set_ylabel("pitch(theta)")
     ax_pitch.set_xlabel("t (s)")
-    ax_pitch.axhline(color='r', ls='--')
+    ax_pitch.axhline(xd[4], color='r', ls='--')
 
     ax_yaw = fig.add_subplot(326)
     ax_yaw.set_ylabel("yaw(psi)")
     ax_yaw.set_xlabel("t (s)")
-    ax_yaw.axhline(color='r', ls='--')    
+    ax_yaw.axhline(xd[5], color='r', ls='--')    
     
     for j in range(Ni):
         ax_x.plot(t, x[j,:,0])

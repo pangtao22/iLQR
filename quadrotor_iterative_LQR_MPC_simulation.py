@@ -47,7 +47,7 @@ xw = WayPoint(x1, t1, W1, rho1)
 
 xw = WayPoint(x1, t1, W1, rho1)
 
-traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, xw_list=[xw])
+traj_specs = TrajectorySpecs(x0, u0, xd, ud, h, N, Q, R, QN, xw_list=None)
 #%% Build drake diagram system and simulate.
 builder = DiagramBuilder()
 quad = builder.AddSystem(Quadrotor())
@@ -113,7 +113,7 @@ input_vector.SetFromVector(traj_specs.u0)
 simulator.StepTo(h*350)
 
 #%% plot
-PlotTraj(logger_x.data().T, dt=None, xw_list=[xw], t=logger_x.sample_times())
+PlotTraj(logger_x.data().T, traj_specs.xd, dt=None, xw_list=[xw], t=logger_x.sample_times())
     
 #%% open meshcat 
 vis = meshcat.Visualizer()
